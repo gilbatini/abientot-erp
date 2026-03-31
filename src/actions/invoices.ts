@@ -18,7 +18,7 @@ export type InvoiceWithTraveller = InvoiceRow & {
 export type ItemDraft = Omit<ItemInsert, "invoice_id" | "sort_order" | "id">;
 
 export type InvoiceWithItems = InvoiceRow & {
-  travellers:    Pick<TravellerRow, "first_name" | "last_name" | "email" | "country"> | null;
+  travellers:    Pick<TravellerRow, "first_name" | "last_name" | "email" | "country" | "phone_number" | "phone_code"> | null;
   invoice_items: Database["public"]["Tables"]["invoice_items"]["Row"][];
 };
 
@@ -36,7 +36,7 @@ export async function getById(id: string): Promise<InvoiceWithItems> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("invoices")
-    .select("*, travellers(first_name, last_name, email, country), invoice_items(*)")
+    .select("*, travellers(first_name, last_name, email, country, phone_number, phone_code), invoice_items(*)")
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);

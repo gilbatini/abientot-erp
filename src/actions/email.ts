@@ -15,7 +15,7 @@ export async function sendInvoiceEmail(invoiceId: string, recipientEmail: string
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("invoices")
-    .select("*, invoice_items(*), travellers(first_name, last_name, email, country)")
+    .select("*, invoice_items(*), travellers(first_name, last_name, email, country, phone_number, phone_code)")
     .eq("id", invoiceId)
     .single();
   if (error) throw new Error(error.message);
@@ -50,7 +50,7 @@ export async function sendQuotationEmail(quotationId: string, recipientEmail: st
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("quotations")
-    .select("*, quotation_items(*), travellers(first_name, last_name, email, country)")
+    .select("*, quotation_items(*), travellers(first_name, last_name, email, country, phone_number, phone_code)")
     .eq("id", quotationId)
     .single();
   if (error) throw new Error(error.message);
@@ -85,7 +85,7 @@ export async function sendReceiptEmail(receiptId: string, recipientEmail: string
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("receipts")
-    .select("*, travellers(first_name, last_name, email, country), invoices(invoice_number)")
+    .select("*, travellers(first_name, last_name, email, country, phone_number, phone_code), invoices(invoice_number)")
     .eq("id", receiptId)
     .single();
   if (error) throw new Error(error.message);

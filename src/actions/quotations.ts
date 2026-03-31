@@ -18,7 +18,7 @@ export type QuotationWithTraveller = QuotationRow & {
 export type QuotationItemDraft = Omit<ItemInsert, "quotation_id" | "sort_order" | "id">;
 
 export type QuotationWithItems = QuotationRow & {
-  travellers:      Pick<TravellerRow, "first_name" | "last_name" | "email" | "country"> | null;
+  travellers:      Pick<TravellerRow, "first_name" | "last_name" | "email" | "country" | "phone_number" | "phone_code"> | null;
   quotation_items: Database["public"]["Tables"]["quotation_items"]["Row"][];
 };
 
@@ -36,7 +36,7 @@ export async function getById(id: string): Promise<QuotationWithItems> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("quotations")
-    .select("*, travellers(first_name, last_name, email, country), quotation_items(*)")
+    .select("*, travellers(first_name, last_name, email, country, phone_number, phone_code), quotation_items(*)")
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);

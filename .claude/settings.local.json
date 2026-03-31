@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls \"D:/Apps 2026/abientot-erp/src/app/\\(app\\)/\")",
+      "Bash(ls \"D:/Apps 2026/abientot-erp/src/app/\\(app\\)/invoices/\")",
+      "Bash(cat \"D:/Apps 2026/abientot-erp/src/app/\\(app\\)/invoices/[id]/page.tsx\")",
+      "Bash(ls \"D:/Apps 2026/abientot-erp/src/app/\\(app\\)/invoices/[id]/\")",
+      "Bash(ls 'D:/Apps 2026/abientot-erp/src/app/\\(app\\)/quotations/[id]/')",
+      "Bash(ls 'D:/Apps 2026/abientot-erp/src/app/\\(app\\)/receipts/[id]/')",
+      "Bash(cat \"D:/Apps 2026/abientot-erp/src/app/\\(app\\)/quotations/[id]/page.tsx\")",
+      "Bash(cat \"D:/Apps 2026/abientot-erp/src/app/\\(app\\)/receipts/[id]/page.tsx\")",
+      "Bash(iconv -f utf-16le -t utf-8 'D:/Apps 2026/abientot-erp/src/types/database.ts')",
+      "Bash(python3:*)",
+      "Bash(node:*)",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}

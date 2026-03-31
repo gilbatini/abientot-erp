@@ -12,7 +12,7 @@ type TravellerRow  = Database["public"]["Tables"]["travellers"]["Row"];
 type InvoiceRow    = Database["public"]["Tables"]["invoices"]["Row"];
 
 export type ReceiptWithRefs = ReceiptRow & {
-  travellers: Pick<TravellerRow, "first_name" | "last_name" | "email" | "country"> | null;
+  travellers: Pick<TravellerRow, "first_name" | "last_name" | "email" | "country" | "phone_number" | "phone_code"> | null;
   invoices:   Pick<InvoiceRow, "invoice_number"> | null;
 };
 
@@ -20,7 +20,7 @@ export async function list(): Promise<ReceiptWithRefs[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("receipts")
-    .select("*, travellers(first_name, last_name, email, country), invoices(invoice_number)")
+    .select("*, travellers(first_name, last_name, email, country, phone_number, phone_code), invoices(invoice_number)")
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []) as ReceiptWithRefs[];
@@ -30,7 +30,7 @@ export async function getById(id: string): Promise<ReceiptWithRefs> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("receipts")
-    .select("*, travellers(first_name, last_name, email, country), invoices(invoice_number)")
+    .select("*, travellers(first_name, last_name, email, country, phone_number, phone_code), invoices(invoice_number)")
     .eq("id", id)
     .single();
   if (error) throw new Error(error.message);
