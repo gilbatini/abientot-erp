@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Role } from "@/types/app";
@@ -23,10 +24,7 @@ export function Sidebar({ role, userName = "User" }: SidebarProps) {
       {/* Brand */}
       <div className="px-4 py-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          {/* Replace with <Image src="/logo.svg" /> once logo is extracted from prototype */}
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-white font-bold text-sm font-display flex-shrink-0">
-            A
-          </div>
+          <Image src="/logo.svg" alt="AlgoriOffice" width={120} height={34} className="flex-shrink-0" />
           <div className="min-w-0">
             <p className="font-display font-semibold text-sm text-gray-900 leading-tight">AlgoriOffice</p>
             <p className="text-xs text-gray-400 truncate">À Bientôt Travels</p>

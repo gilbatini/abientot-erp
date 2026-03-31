@@ -11,12 +11,13 @@ export default async function DashboardPage() {
     supabase.from("invoices").select("total, currency").eq("status", "paid"),
   ]);
 
-  const totalUSD = revenue?.filter(r => r.currency === "USD").reduce((s, r) => s + r.total, 0) ?? 0;
+  const rows = (revenue ?? []) as { total: number; currency: string }[];
+  const totalUSD = rows.filter(r => r.currency === "USD").reduce((s, r) => s + r.total, 0);
 
   const stats = [
     { label: "Total Travellers", value: travellers ?? 0,          icon: "👥", sub: "All time" },
     { label: "Paid Invoices",    value: invoices ?? 0,            icon: "✅", sub: "All time" },
-    { label: "Revenue (USD)",    value: fmtCurrency(totalUSD, "USD"), icon: "💰", sub: "Paid invoices" },
+    { label: "Revenue (USD)",    value: fmtCurrency(totalUSD, "USD"),  icon: "💰", sub: "Paid invoices" },
   ];
 
   return (
