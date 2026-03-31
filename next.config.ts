@@ -1,6 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  distDir: ".next-build",
+  serverExternalPackages: ["@react-pdf/renderer"],
+  outputFileTracingExcludes: {
+    "*": ["**/*"],
+  },
   images: {
     remotePatterns: [
       {
