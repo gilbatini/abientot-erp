@@ -12,7 +12,15 @@
       "Bash(iconv -f utf-16le -t utf-8 'D:/Apps 2026/abientot-erp/src/types/database.ts')",
       "Bash(python3:*)",
       "Bash(node:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(npm install:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(grep -A 30 '\"\"dependencies\"\"' package.json)",
+      "Bash(xargs grep:*)",
+      "Bash(grep -n \"params\" src/app/\\\\\\(app\\\\\\)/proformas/[id]/page.tsx src/app/\\\\\\(app\\\\\\)/quotations/[id]/page.tsx src/app/\\\\\\(app\\\\\\)/invoices/[id]/page.tsx src/app/\\\\\\(app\\\\\\)/receipts/[id]/page.tsx src/app/\\\\\\(app\\\\\\)/travellers/[id]/page.tsx)",
+      "Bash(cd:*)",
+      "Bash(find 'D:/Apps 2026/abientot-erp/supabase' -name *.sql)",
+      "Bash(cat src/app/\\\\\\(app\\\\\\)/receipts/page.tsx)"
     ]
   }
 }

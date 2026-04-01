@@ -1,8 +1,0 @@
-{
-  "/api/pdf/invoice/[id]/route": "app/api/pdf/invoice/[id]/route.js",
-  "/(app)/dashboard/page": "app/(app)/dashboard/page.js",
-  "/(app)/invoices/page": "app/(app)/invoices/page.js",
-  "/(app)/invoices/[id]/page": "app/(app)/invoices/[id]/page.js",
-  "/(app)/travellers/page": "app/(app)/travellers/page.js",
-  "/(app)/receipts/page": "app/(app)/receipts/page.js"
-}
