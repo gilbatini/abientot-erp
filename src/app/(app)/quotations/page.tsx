@@ -1,6 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
-import { list } from "@/actions/quotations";
+import type { Database } from "@/types/database";
 import { PageHeader } from "@/components/layout/PageHeader";
+
+type QuotationRow = Database["public"]["Tables"]["quotations"]["Row"] & {
+  travellers: { first_name: string; last_name: string } | null;
+};
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
@@ -12,9 +16,15 @@ import type { Role } from "@/types/app";
 export default async function QuotationsPage() {
   const supabase   = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role       = (user?.user_metadata?.role ?? "viewer") as Role;
-  const canEdit    = role === "admin" || role === "agent";
-  const quotations = await list();
+  const role    = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit = role === "admin" || role === "agent";
+
+  const { data, error } = await supabase
+    .from("quotations")
+    .select("*, travellers(first_name, last_name)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const quotations = (data ?? []) as QuotationRow[];
 
   return (
     <div>

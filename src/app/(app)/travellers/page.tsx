@@ -1,24 +1,32 @@
 import { createClient } from "@/lib/supabase/server";
-import { list } from "@/actions/travellers";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Avatar } from "@/components/ui/Avatar";
 import { Button } from "@/components/ui/Button";
 import { formatDate } from "@/lib/utils/dates";
 import Link from "next/link";
 import type { Role } from "@/types/app";
+import type { Database } from "@/types/database";
+
+type TravellerRow = Database["public"]["Tables"]["travellers"]["Row"];
 
 export default async function TravellersPage() {
-  const supabase   = await createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role       = (user?.user_metadata?.role ?? "viewer") as Role;
-  const canEdit    = role === "admin" || role === "agent";
-  const travellers = await list();
+  const role     = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit  = role === "admin" || role === "agent";
+
+  const { data, error } = await supabase
+    .from("travellers")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const travellers = (data ?? []) as TravellerRow[];
 
   return (
     <div>
       <PageHeader
         title="Travellers"
-        subtitle={`${travellers.length} traveller${travellers.length !== 1 ? "s" : ""}`}
+        subtitle={`${(travellers ?? []).length} traveller${(travellers ?? []).length !== 1 ? "s" : ""}`}
         actions={canEdit ? (
           <Link href="/travellers/new">
             <Button>+ Add Traveller</Button>
@@ -39,14 +47,14 @@ export default async function TravellersPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {travellers.length === 0 ? (
+            {(travellers ?? []).length === 0 ? (
               <tr>
                 <td colSpan={canEdit ? 6 : 5} className="px-4 py-12 text-center text-gray-400">
                   No travellers yet — add your first one.
                 </td>
               </tr>
             ) : (
-              travellers.map((t) => {
+              (travellers ?? []).map((t) => {
                 const fullName = `${t.first_name} ${t.last_name}`;
                 return (
                   <tr key={t.id} className="hover:bg-gray-50 transition-colors">

@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { list } from "@/actions/invoices";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -8,13 +7,24 @@ import { fmtCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/dates";
 import Link from "next/link";
 import type { Role } from "@/types/app";
+import type { Database } from "@/types/database";
+
+type InvoiceRow = Database["public"]["Tables"]["invoices"]["Row"] & {
+  travellers: { first_name: string; last_name: string } | null;
+};
 
 export default async function InvoicesPage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role     = (user?.user_metadata?.role ?? "viewer") as Role;
-  const canEdit  = role === "admin" || role === "agent";
-  const invoices = await list();
+  const role    = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit = role === "admin" || role === "agent";
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*, travellers(first_name, last_name)")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(error.message);
+  const invoices = (data ?? []) as InvoiceRow[];
 
   return (
     <div>
