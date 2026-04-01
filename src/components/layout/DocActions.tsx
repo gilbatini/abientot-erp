@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { sendInvoiceEmail } from "@/actions/email";
-import { sendQuotationEmail } from "@/actions/email";
-import { sendReceiptEmail } from "@/actions/email";
+import { sendInvoiceEmail, sendQuotationEmail, sendReceiptEmail, sendProformaEmail } from "@/actions/email";
 
 type DocType = "invoice" | "quotation" | "receipt" | "proforma";
 
@@ -57,7 +55,7 @@ export function DocActions({ docId, docNumber, docType, travellerEmail }: DocAct
     try {
       if (docType === "invoice")        await sendInvoiceEmail(docId, travellerEmail);
       else if (docType === "quotation") await sendQuotationEmail(docId, travellerEmail);
-      else if (docType === "proforma")  await sendQuotationEmail(docId, travellerEmail);
+      else if (docType === "proforma")  await sendProformaEmail(docId, travellerEmail);
       else                              await sendReceiptEmail(docId, travellerEmail);
       setMailSent(true);
     } catch {

@@ -1,15 +1,25 @@
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { UserManagement } from "@/components/settings/UserManagement";
+import { listUsers } from "@/actions/users";
+import type { Role } from "@/types/app";
 
-export default function Page() {
+export default async function SettingsPage() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  const role = (user?.user_metadata?.role ?? "viewer") as Role;
+  if (role !== "admin") redirect("/dashboard");
+
+  const users = await listUsers();
+
   return (
-    <div>
+    <div className="space-y-6">
       <PageHeader
         title="Settings"
-        subtitle="Build in Phase 2–4 — see CLAUDE.md for architecture rules"
+        subtitle="Manage users and application configuration"
       />
-      <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">
-        Module scaffolded and ready to build.
-      </div>
+      <UserManagement users={users} currentUserId={user!.id} />
     </div>
   );
 }

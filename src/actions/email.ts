@@ -80,6 +80,36 @@ export async function sendQuotationEmail(quotationId: string, recipientEmail: st
   });
 }
 
+export async function sendProformaEmail(proformaId: string, recipientEmail: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("proformas")
+    .select("number, currency, total, expiry_date, travellers(first_name, last_name)")
+    .eq("id", proformaId)
+    .single();
+  if (error) throw new Error(error.message);
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proforma = data as any;
+  const travellerName = proforma.travellers
+    ? `${proforma.travellers.first_name} ${proforma.travellers.last_name}`
+    : "Guest";
+
+  const pdfBuffer = await fetchPdf(`/api/pdf/proforma/${proformaId}`);
+
+  await sendEmail({
+    to:      recipientEmail,
+    subject: `Proforma ${proforma.number} — À Bientôt Tour & Travels`,
+    react:   QuotationEmail({
+      quotationNumber: proforma.number,
+      travellerName,
+      total:      `${proforma.currency} ${proforma.total}`,
+      validUntil: proforma.expiry_date ?? "",
+    }),
+    attachments: [{ filename: `${proforma.number}.pdf`, content: pdfBuffer.toString("base64") }],
+  });
+}
+
 export async function sendReceiptEmail(receiptId: string, recipientEmail: string) {
   const supabase = await createClient();
   const { data, error } = await supabase
