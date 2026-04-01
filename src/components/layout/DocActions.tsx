@@ -5,7 +5,7 @@ import { sendInvoiceEmail } from "@/actions/email";
 import { sendQuotationEmail } from "@/actions/email";
 import { sendReceiptEmail } from "@/actions/email";
 
-type DocType = "invoice" | "quotation" | "receipt";
+type DocType = "invoice" | "quotation" | "receipt" | "proforma";
 
 interface DocActionsProps {
   docId:          string;
@@ -18,6 +18,7 @@ const PDF_ROUTE: Record<DocType, (id: string) => string> = {
   invoice:   (id) => `/api/pdf/invoice/${id}`,
   quotation: (id) => `/api/pdf/quotation/${id}`,
   receipt:   (id) => `/api/pdf/receipt/${id}`,
+  proforma:  (id) => `/api/pdf/proforma/${id}`,
 };
 
 export function DocActions({ docId, docNumber, docType, travellerEmail }: DocActionsProps) {
@@ -56,6 +57,7 @@ export function DocActions({ docId, docNumber, docType, travellerEmail }: DocAct
     try {
       if (docType === "invoice")        await sendInvoiceEmail(docId, travellerEmail);
       else if (docType === "quotation") await sendQuotationEmail(docId, travellerEmail);
+      else if (docType === "proforma")  await sendQuotationEmail(docId, travellerEmail);
       else                              await sendReceiptEmail(docId, travellerEmail);
       setMailSent(true);
     } catch {

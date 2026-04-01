@@ -3,7 +3,8 @@ import { redirect, notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DocActions } from "@/components/layout/DocActions";
 import { QuotationForm } from "@/components/quotations/QuotationForm";
-import { getById } from "@/actions/quotations";
+import { ConvertToInvoiceButton } from "@/components/proformas/ConvertToInvoiceButton";
+import { getById, convertQuotationToInvoice } from "@/actions/quotations";
 import type { Role } from "@/types/app";
 import type { Database } from "@/types/database";
 
@@ -22,20 +23,28 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
   ]);
   if (!quotation) notFound();
 
-  const travellers = (tData ?? []) as Pick<TravellerRow, "id" | "first_name" | "last_name">[];
+  const travellers    = (tData ?? []) as Pick<TravellerRow, "id" | "first_name" | "last_name">[];
+  const alreadyConverted = !!quotation.converted_to;
 
   return (
     <div>
       <PageHeader
         title={`Quotation ${quotation.number}`}
-        subtitle="Edit quotation details"
+        subtitle={alreadyConverted ? "Already converted to invoice" : "Edit quotation details"}
         actions={
-          <DocActions
-            docId={id}
-            docNumber={quotation.number}
-            docType="quotation"
-            travellerEmail={quotation.travellers?.email ?? null}
-          />
+          <div className="flex items-center gap-2">
+            <DocActions
+              docId={id}
+              docNumber={quotation.number}
+              docType="quotation"
+              travellerEmail={quotation.travellers?.email ?? null}
+            />
+            {!alreadyConverted && (
+              <ConvertToInvoiceButton
+                onConvert={() => convertQuotationToInvoice(id)}
+              />
+            )}
+          </div>
         }
       />
       <QuotationForm travellers={travellers} initialData={quotation} />
