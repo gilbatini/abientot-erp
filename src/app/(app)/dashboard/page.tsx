@@ -19,12 +19,14 @@ export default async function DashboardPage() {
   const [
     { count: travellerCount },
     { count: quotationCount },
+    { count: proformaCount },
     { data: allInvoicesData },
     { data: recentInvoicesData },
     { data: recentQuotationsData },
   ] = await Promise.all([
     supabase.from("travellers").select("*", { count: "exact", head: true }),
     supabase.from("quotations").select("*", { count: "exact", head: true }),
+    supabase.from("proformas").select("*", { count: "exact", head: true }),
     supabase.from("invoices").select("status, total, currency"),
     supabase
       .from("invoices")
@@ -59,11 +61,12 @@ export default async function DashboardPage() {
       <PageHeader title="Dashboard" subtitle="À Bientôt Tour & Travels Ltd" />
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard label="Travellers"      value={travellerCount ?? 0} icon="👥" sub="registered" />
-        <StatCard label="Quotations"      value={quotationCount ?? 0} icon="📋" sub="all time" />
-        <StatCard label="Invoices"        value={totalInvoices}       icon="🧾" sub="all time" />
-        <StatCard label="Revenue (USD)"   value={fmtCurrency(revenueUSD, "USD")} icon="💰" sub="paid invoices" />
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+        <StatCard label="Travellers"    value={travellerCount ?? 0} icon="👥" sub="registered" />
+        <StatCard label="Quotations"    value={quotationCount ?? 0} icon="📋" sub="all time" />
+        <StatCard label="Proformas"     value={proformaCount ?? 0}  icon="📄" sub="all time" />
+        <StatCard label="Invoices"      value={totalInvoices}       icon="🧾" sub="all time" />
+        <StatCard label="Revenue (USD)" value={fmtCurrency(revenueUSD, "USD")} icon="💰" sub="paid invoices" />
       </div>
 
       {/* Invoice status breakdown */}

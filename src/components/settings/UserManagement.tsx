@@ -5,7 +5,8 @@ import { createUser, updateUserRole, deleteUser } from "@/actions/users";
 import type { AppUser } from "@/actions/users";
 import type { Role } from "@/types/app";
 
-const ROLES: Role[] = ["admin", "agent", "viewer"];
+const ROLES: Role[]        = ["admin", "agent", "viewer"];
+const INVITE_ROLES: Role[] = ["agent", "viewer"];
 
 const ROLE_BADGE: Record<Role, string> = {
   admin:  "bg-teal-50 text-teal-700",
@@ -118,7 +119,7 @@ export function UserManagement({ users: initialUsers, currentUserId }: { users: 
                 value={newRole} onChange={e => setNewRole(e.target.value as Role)}
                 className="rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/40 bg-white"
               >
-                {ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
+                {INVITE_ROLES.map(r => <option key={r} value={r}>{r.charAt(0).toUpperCase() + r.slice(1)}</option>)}
               </select>
             </div>
             <div className="flex gap-2">
