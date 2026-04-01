@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DocActions } from "@/components/layout/DocActions";
 import { InvoiceForm } from "@/components/invoices/InvoiceForm";
@@ -13,8 +13,8 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = (user?.user_metadata?.role ?? "viewer") as Role;
-  if (role === "viewer") redirect("/invoices");
+  const role    = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit = role === "admin" || role === "agent";
 
   const [invoice, { data: tData }] = await Promise.all([
     getById(id).catch(() => null),
@@ -28,7 +28,7 @@ export default async function EditInvoicePage({ params }: { params: Promise<{ id
     <div>
       <PageHeader
         title={`Invoice ${invoice.invoice_number}`}
-        subtitle="Edit invoice details"
+        subtitle={canEdit ? "Edit invoice details" : "View invoice details"}
         actions={
           <DocActions
             docId={id}

@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DocActions } from "@/components/layout/DocActions";
 import { QuotationForm } from "@/components/quotations/QuotationForm";
@@ -14,8 +14,8 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = (user?.user_metadata?.role ?? "viewer") as Role;
-  if (role === "viewer") redirect("/quotations");
+  const role    = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit = role === "admin" || role === "agent";
 
   const [quotation, { data: tData }] = await Promise.all([
     getById(id).catch(() => null),
@@ -30,7 +30,9 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
     <div>
       <PageHeader
         title={`Quotation ${quotation.number}`}
-        subtitle={alreadyConverted ? "Already converted to invoice" : "Edit quotation details"}
+        subtitle={canEdit
+          ? (alreadyConverted ? "Already converted to invoice" : "Edit quotation details")
+          : "View quotation details"}
         actions={
           <div className="flex items-center gap-2">
             <DocActions
@@ -39,7 +41,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
               docType="quotation"
               travellerEmail={quotation.travellers?.email ?? null}
             />
-            {!alreadyConverted && (
+            {canEdit && !alreadyConverted && (
               <ConvertToInvoiceButton
                 onConvert={() => convertQuotationToInvoice(id)}
               />

@@ -46,13 +46,13 @@ export default async function ProformasPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Expiry</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Status</th>
               <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Total</th>
-              {canEdit && <th className="px-4 py-3" />}
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {proformas.length === 0 ? (
               <tr>
-                <td colSpan={canEdit ? 7 : 6} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
                   No proformas yet — create your first one.
                 </td>
               </tr>
@@ -76,13 +76,13 @@ export default async function ProformasPage() {
                   <td className="px-4 py-3 text-right font-medium text-gray-900">
                     {fmtCurrency(p.total, p.currency)}
                   </td>
-                  {canEdit && (
-                    <td className="px-4 py-3 text-right">
-                      <Link href={`/proformas/${p.id}`}>
-                        <Button variant="ghost" className="p-1.5 text-xs">Edit</Button>
-                      </Link>
-                    </td>
-                  )}
+                  <td className="px-4 py-3 text-right">
+                    <Link href={`/proformas/${p.id}`}>
+                      <Button variant="ghost" className="p-1.5 text-xs">
+                        {canEdit ? "Edit" : "View"}
+                      </Button>
+                    </Link>
+                  </td>
                 </tr>
               );
             })}

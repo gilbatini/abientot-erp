@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Button } from "@/components/ui/Button";
@@ -12,9 +12,8 @@ export default async function EditTravellerPage({ params }: { params: Promise<{ 
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = (user?.user_metadata?.role ?? "viewer") as Role;
-
-  if (role === "viewer") redirect("/travellers");
+  const role    = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit = role === "admin" || role === "agent";
 
   let traveller;
   try {
@@ -29,7 +28,7 @@ export default async function EditTravellerPage({ params }: { params: Promise<{ 
     <div>
       <PageHeader
         title={fullName}
-        subtitle="Edit traveller details"
+        subtitle={canEdit ? "Edit traveller details" : "View traveller details"}
         actions={
           <Link href="/travellers">
             <Button variant="secondary">← Back</Button>

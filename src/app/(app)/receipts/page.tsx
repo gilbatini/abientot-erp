@@ -1,11 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database";
 import { PageHeader } from "@/components/layout/PageHeader";
-
-type ReceiptRow = Database["public"]["Tables"]["receipts"]["Row"] & {
-  travellers: { first_name: string; last_name: string } | null;
-  invoices: { invoice_number: string } | null;
-};
 import { Button } from "@/components/ui/Button";
 import { Avatar } from "@/components/ui/Avatar";
 import { fmtCurrency } from "@/lib/utils/currency";
@@ -13,6 +8,11 @@ import { formatDate } from "@/lib/utils/dates";
 import Link from "next/link";
 import type { Role } from "@/types/app";
 import { PAYMENT_LABELS } from "@/types/app";
+
+type ReceiptRow = Database["public"]["Tables"]["receipts"]["Row"] & {
+  travellers: { first_name: string; last_name: string } | null;
+  invoices: { invoice_number: string } | null;
+};
 
 export default async function ReceiptsPage() {
   const supabase  = await createClient();
@@ -47,13 +47,13 @@ export default async function ReceiptsPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Date</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Method</th>
               <th className="text-right px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Amount</th>
-              {canEdit && <th className="px-4 py-3" />}
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {receipts.length === 0 ? (
               <tr>
-                <td colSpan={canEdit ? 7 : 6} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={7} className="px-4 py-12 text-center text-gray-400">
                   No receipts yet — create your first one.
                 </td>
               </tr>
@@ -84,13 +84,13 @@ export default async function ReceiptsPage() {
                   <td className="px-4 py-3 text-right font-medium text-gray-900">
                     {fmtCurrency(r.amount_paid, r.currency)}
                   </td>
-                  {canEdit && (
-                    <td className="px-4 py-3 text-right">
-                      <Link href={`/receipts/${r.id}`}>
-                        <Button variant="ghost" className="p-1.5 text-xs">Edit</Button>
-                      </Link>
-                    </td>
-                  )}
+                  <td className="px-4 py-3 text-right">
+                    <Link href={`/receipts/${r.id}`}>
+                      <Button variant="ghost" className="p-1.5 text-xs">
+                        {canEdit ? "Edit" : "View"}
+                      </Button>
+                    </Link>
+                  </td>
                 </tr>
               );
             })}

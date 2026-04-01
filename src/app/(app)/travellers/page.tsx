@@ -26,7 +26,7 @@ export default async function TravellersPage() {
     <div>
       <PageHeader
         title="Travellers"
-        subtitle={`${(travellers ?? []).length} traveller${(travellers ?? []).length !== 1 ? "s" : ""}`}
+        subtitle={`${travellers.length} traveller${travellers.length !== 1 ? "s" : ""}`}
         actions={canEdit ? (
           <Link href="/travellers/new">
             <Button>+ Add Traveller</Button>
@@ -43,44 +43,42 @@ export default async function TravellersPage() {
               <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Country</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Passport</th>
               <th className="text-left px-4 py-3 font-medium text-gray-500 text-xs uppercase tracking-wide">Added</th>
-              {canEdit && <th className="px-4 py-3" />}
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {(travellers ?? []).length === 0 ? (
+            {travellers.length === 0 ? (
               <tr>
-                <td colSpan={canEdit ? 6 : 5} className="px-4 py-12 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-12 text-center text-gray-400">
                   No travellers yet — add your first one.
                 </td>
               </tr>
-            ) : (
-              (travellers ?? []).map((t) => {
-                const fullName = `${t.first_name} ${t.last_name}`;
-                return (
-                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <Avatar name={fullName} />
-                        <span className="font-medium text-gray-900">{fullName}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{t.email ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-600">{t.country ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-500 font-mono text-xs">{t.passport ?? "—"}</td>
-                    <td className="px-4 py-3 text-gray-400 text-xs">
-                      {t.created_at ? formatDate(t.created_at) : "—"}
-                    </td>
-                    {canEdit && (
-                      <td className="px-4 py-3 text-right">
-                        <Link href={`/travellers/${t.id}`}>
-                          <Button variant="ghost" className="p-1.5 text-xs">Edit</Button>
-                        </Link>
-                      </td>
-                    )}
-                  </tr>
-                );
-              })
-            )}
+            ) : travellers.map((t) => {
+              const fullName = `${t.first_name} ${t.last_name}`;
+              return (
+                <tr key={t.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={fullName} />
+                      <span className="font-medium text-gray-900">{fullName}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">{t.email ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-600">{t.country ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{t.passport ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-400 text-xs">
+                    {t.created_at ? formatDate(t.created_at) : "—"}
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <Link href={`/travellers/${t.id}`}>
+                      <Button variant="ghost" className="p-1.5 text-xs">
+                        {canEdit ? "Edit" : "View"}
+                      </Button>
+                    </Link>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

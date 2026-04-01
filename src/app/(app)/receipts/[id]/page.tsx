@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DocActions } from "@/components/layout/DocActions";
 import { ReceiptForm } from "@/components/receipts/ReceiptForm";
@@ -14,8 +14,8 @@ export default async function EditReceiptPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = (user?.user_metadata?.role ?? "viewer") as Role;
-  if (role === "viewer") redirect("/receipts");
+  const role    = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit = role === "admin" || role === "agent";
 
   const [receipt, { data: tData }, { data: iData }] = await Promise.all([
     getById(id).catch(() => null),
@@ -31,7 +31,7 @@ export default async function EditReceiptPage({ params }: { params: Promise<{ id
     <div>
       <PageHeader
         title={`Receipt ${receipt.receipt_number}`}
-        subtitle="Edit receipt details"
+        subtitle={canEdit ? "Edit receipt details" : "View receipt details"}
         actions={
           <DocActions
             docId={id}

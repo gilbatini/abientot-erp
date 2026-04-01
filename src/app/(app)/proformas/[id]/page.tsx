@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect, notFound } from "next/navigation";
+import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { DocActions } from "@/components/layout/DocActions";
 import { ProformaForm } from "@/components/proformas/ProformaForm";
@@ -14,8 +14,8 @@ export default async function EditProformaPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  const role = (user?.user_metadata?.role ?? "viewer") as Role;
-  if (role === "viewer") redirect("/proformas");
+  const role    = (user?.user_metadata?.role ?? "viewer") as Role;
+  const canEdit = role === "admin" || role === "agent";
 
   const [proforma, { data: tData }] = await Promise.all([
     getById(id).catch(() => null),
@@ -24,14 +24,15 @@ export default async function EditProformaPage({ params }: { params: Promise<{ i
   if (!proforma) notFound();
 
   const travellers = (tData ?? []) as Pick<TravellerRow, "id" | "first_name" | "last_name">[];
-
   const alreadyConverted = !!proforma.converted_to;
 
   return (
     <div>
       <PageHeader
         title={`Proforma ${proforma.number}`}
-        subtitle={alreadyConverted ? "Already converted to invoice" : "Edit proforma details"}
+        subtitle={canEdit
+          ? (alreadyConverted ? "Already converted to invoice" : "Edit proforma details")
+          : "View proforma details"}
         actions={
           <div className="flex items-center gap-2">
             <DocActions
@@ -40,7 +41,7 @@ export default async function EditProformaPage({ params }: { params: Promise<{ i
               docType="proforma"
               travellerEmail={proforma.travellers?.email ?? null}
             />
-            {!alreadyConverted && (
+            {canEdit && !alreadyConverted && (
               <ConvertToInvoiceButton
                 onConvert={() => convertProformaToInvoice(id)}
               />
