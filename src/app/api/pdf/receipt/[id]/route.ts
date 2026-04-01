@@ -1,10 +1,7 @@
-import React from "react";
 import { existsSync } from "fs";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  renderToBuffer, Document, Page, View, Text, Image, StyleSheet,
-} from "@react-pdf/renderer";
+import PDFDocument from "pdfkit";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -22,11 +19,11 @@ const BRAND_EMAIL   = "abientottours2023@gmail.com";
 const BRAND_PHONE   = "+256 788 138 721";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
-const TEAL       = "#2BBFB3";
-const DARK       = "#1a1a1a";
-const GRAY       = "#6b7280";
-const BORDER     = "#e5e7eb";
-const TEAL_LIGHT = "#e6f9f8";
+const TEAL        = "#2BBFB3";
+const DARK        = "#1a1a1a";
+const GRAY        = "#6b7280";
+const BORDER_GRAY = "#e5e7eb";
+const TEAL_LIGHT  = "#e6f9f8";
 
 const PAYMENT_LABELS: Record<string, string> = {
   bank_transfer: "Bank Transfer",
@@ -54,54 +51,161 @@ function fmtDate(d: string | null): string {
   });
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  page:         { paddingTop: 40, paddingHorizontal: 48, paddingBottom: 60,
-                  fontFamily: "Helvetica", backgroundColor: "#ffffff" },
-  header:       { flexDirection: "row", justifyContent: "space-between", marginBottom: 14 },
-  hLeft:        { flexDirection: "column" },
-  hRight:       { alignItems: "flex-end" },
-  docType:      { fontFamily: "Helvetica-Bold", fontSize: 30, color: DARK, marginBottom: 2 },
-  docNumber:    { fontFamily: "Helvetica-Bold", fontSize: 16, color: TEAL, marginBottom: 3 },
-  metaLine:     { fontSize: 9, color: GRAY, marginBottom: 2 },
-  metaBold:     { fontFamily: "Helvetica-Bold", fontSize: 9, color: DARK },
-  coName:       { fontFamily: "Helvetica-Bold", fontSize: 14, color: DARK, marginBottom: 6 },
-  coDetail:     { fontSize: 8, color: GRAY, marginBottom: 1 },
-  rule:         { height: 1, backgroundColor: "#d1d5db", marginBottom: 16 },
-  infoBlock:    { flexDirection: "row", justifyContent: "space-between", marginBottom: 20 },
-  infoCol:      { width: "46%" },
-  infoLabel:    { fontFamily: "Helvetica-Bold", fontSize: 8, color: TEAL,
-                  textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 },
-  infoName:     { fontFamily: "Helvetica-Bold", fontSize: 14, color: DARK, marginBottom: 3 },
-  infoDetail:   { fontSize: 9, color: GRAY, marginBottom: 1 },
-  amountBlock:  { backgroundColor: TEAL_LIGHT, borderRadius: 6,
-                  paddingVertical: 16, paddingHorizontal: 20, marginBottom: 20 },
-  amountLabel:  { fontFamily: "Helvetica-Bold", fontSize: 8, color: TEAL,
-                  textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 },
-  amountValue:  { fontFamily: "Helvetica-Bold", fontSize: 30, color: DARK },
-  card:         { backgroundColor: "#f9fafb", borderRadius: 6,
-                  paddingVertical: 12, paddingHorizontal: 16, marginBottom: 20 },
-  cardRow:      { flexDirection: "row", justifyContent: "space-between",
-                  paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: BORDER },
-  cardRowLast:  { flexDirection: "row", justifyContent: "space-between", paddingVertical: 5 },
-  cardLabel:    { fontSize: 8.5, color: GRAY },
-  cardValue:    { fontFamily: "Helvetica-Bold", fontSize: 8.5, color: DARK },
-  bottom:       { flexDirection: "row", marginTop: 14 },
-  bottomCol:    { flex: 1, marginRight: 16 },
-  bottomLabel:  { fontFamily: "Helvetica-Bold", fontSize: 8, color: TEAL,
-                  textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 },
-  bottomText:   { fontSize: 8.5, color: GRAY, lineHeight: 1.55 },
-  footer:       { position: "absolute", bottom: 20, left: 48, right: 48,
-                  borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 7 },
-  footerText:   { fontSize: 7.5, color: "#9ca3af", textAlign: "center" },
-});
+function buildPdf(receipt: Record<string, unknown>): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 0, bufferPages: true, info: {
+      Title: `Receipt ${receipt.receipt_number}`,
+      Author: BRAND_NAME,
+    }});
+
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const t        = receipt.travellers as any;
+    const name     = t ? `${t.first_name} ${t.last_name}` : "—";
+    const phone    = t?.phone_number
+      ? [t.phone_code, t.phone_number].filter(Boolean).join(" ")
+      : null;
+    const payLabel = PAYMENT_LABELS[receipt.payment_method as string] ?? (receipt.payment_method ?? "—");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const invNum   = (receipt.invoices as any)?.invoice_number ?? null;
+
+    const PAGE_W = 595.28;
+    const PAGE_H = 841.89;
+    const ML = 48;
+    const MR = 48;
+    const CONTENT_W = PAGE_W - ML - MR;
+
+    let y = 40;
+
+    // ── HEADER ───────────────────────────────────────────────────────────────
+    if (logoSrc) {
+      doc.image(logoSrc, ML, y, { width: 150, height: 42 });
+    } else {
+      doc.font("Helvetica-Bold").fontSize(16).fillColor(DARK).text(BRAND_SHORT, ML, y + 6);
+    }
+
+    doc.font("Helvetica").fontSize(8).fillColor(GRAY)
+      .text(BRAND_ADDRESS, ML, y + 52)
+      .text(`${BRAND_PHONE} · ${BRAND_EMAIL}`, ML, y + 63);
+
+    const rightX = PAGE_W - MR;
+    doc.font("Helvetica-Bold").fontSize(28).fillColor(DARK)
+      .text("RECEIPT", 0, y, { width: rightX, align: "right" });
+
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(TEAL)
+      .text(String(receipt.receipt_number), 0, y + 36, { width: rightX, align: "right" });
+
+    doc.font("Helvetica").fontSize(9).fillColor(GRAY)
+      .text("Payment Date: ", 0, y + 56, { width: rightX - 40, align: "right", continued: true })
+      .font("Helvetica-Bold").fillColor(DARK)
+      .text(fmtDate(receipt.payment_date as string));
+
+    if (invNum) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY)
+        .text("Invoice: ", 0, y + 70, { width: rightX - 40, align: "right", continued: true })
+        .font("Helvetica-Bold").fillColor(DARK)
+        .text(String(invNum));
+    }
+
+    y = 120;
+
+    // ── DIVIDER ──────────────────────────────────────────────────────────────
+    doc.moveTo(ML, y).lineTo(PAGE_W - MR, y).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
+    y += 16;
+
+    // ── RECEIPT FOR / RECEIVED BY ────────────────────────────────────────────
+    const colW = CONTENT_W * 0.46;
+
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
+      .text("RECEIPT FOR", ML, y);
+    y += 14;
+    doc.font("Helvetica-Bold").fontSize(13).fillColor(DARK).text(name, ML, y);
+    y += 18;
+    if (phone) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(phone as string, ML, y);
+      y += 12;
+    }
+    if (t?.country) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(t.country, ML, y);
+      y += 12;
+    }
+    if (t?.email) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(t.email, ML, y);
+      y += 12;
+    }
+
+    const receivedY = y - 18 - (phone ? 12 : 0) - (t?.country ? 12 : 0) - (t?.email ? 12 : 0) - 14;
+    const receivedX = ML + colW + CONTENT_W * 0.08;
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL).text("RECEIVED BY", receivedX, receivedY);
+    doc.font("Helvetica-Bold").fontSize(13).fillColor(DARK).text("À Bientôt Team", receivedX, receivedY + 14);
+    doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(BRAND_NAME, receivedX, receivedY + 32);
+
+    y += 20;
+
+    // ── AMOUNT PAID ──────────────────────────────────────────────────────────
+    doc.rect(ML, y, CONTENT_W, 64).fill(TEAL_LIGHT);
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
+      .text("AMOUNT PAID", ML + 20, y + 12);
+    doc.font("Helvetica-Bold").fontSize(30).fillColor(DARK)
+      .text(fmt(receipt.amount_paid as number, receipt.currency as string), ML + 20, y + 26);
+    y += 76;
+
+    // ── PAYMENT DETAILS ───────────────────────────────────────────────────────
+    doc.rect(ML, y, CONTENT_W, 18).fill("#f9fafb");
+
+    const drawDetailRow = (label: string, value: string, isLast: boolean) => {
+      doc.rect(ML, y, CONTENT_W, 22).fill("#f9fafb");
+      doc.font("Helvetica").fontSize(8.5).fillColor(GRAY)
+        .text(label, ML + 16, y + 6, { width: CONTENT_W * 0.5, lineBreak: false });
+      doc.font("Helvetica-Bold").fontSize(8.5).fillColor(DARK)
+        .text(value, ML + CONTENT_W * 0.5, y + 6, { width: CONTENT_W * 0.5 - 16, align: "right", lineBreak: false });
+      if (!isLast) {
+        doc.moveTo(ML, y + 22).lineTo(PAGE_W - MR, y + 22).strokeColor(BORDER_GRAY).lineWidth(0.5).stroke();
+      }
+      y += 22;
+    };
+
+    const detailRows: [string, string][] = [
+      ["Payment Method", String(payLabel)],
+      ["Payment Date",   fmtDate(receipt.payment_date as string)],
+    ];
+    if (receipt.reference_number) detailRows.push(["Reference Number", String(receipt.reference_number)]);
+    if (invNum) detailRows.push(["Invoice Reference", String(invNum)]);
+
+    for (let i = 0; i < detailRows.length; i++) {
+      drawDetailRow(detailRows[i][0], detailRows[i][1], i === detailRows.length - 1);
+    }
+    y += 12;
+
+    // ── NOTES ────────────────────────────────────────────────────────────────
+    if (receipt.notes) {
+      doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL).text("NOTES", ML, y);
+      doc.font("Helvetica").fontSize(8.5).fillColor(GRAY)
+        .text(String(receipt.notes), ML, y + 14, { width: CONTENT_W / 2 - 8, lineGap: 4 });
+    }
+
+    // ── FOOTER ───────────────────────────────────────────────────────────────
+    const footerY = PAGE_H - 36;
+    doc.moveTo(ML, footerY).lineTo(PAGE_W - MR, footerY).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
+    doc.font("Helvetica").fontSize(7.5).fillColor("#9ca3af")
+      .text(
+        `Thank you for choosing ${BRAND_NAME} · ${BRAND_TAGLINE} · ${BRAND_PHONE} · ${BRAND_EMAIL}`,
+        ML, footerY + 7, { width: CONTENT_W, align: "center" },
+      );
+
+    doc.end();
+  });
+}
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const ce = React.createElement;
 
   try {
     const supabase = await createClient();
@@ -114,127 +218,20 @@ export async function GET(
       .select("*, travellers(first_name, last_name, email, country, phone_number, phone_code), invoices(invoice_number)")
       .eq("id", id)
       .single();
+
     if (error || !data) {
       console.error("[pdf/receipt] supabase error:", error);
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const receipt  = data as any;
-    const t        = receipt.travellers;
-    const name     = t ? `${t.first_name} ${t.last_name}` : "—";
-    const phone    = t?.phone_number
-      ? [t.phone_code, t.phone_number].filter(Boolean).join(" ")
-      : null;
-    const payLabel = PAYMENT_LABELS[receipt.payment_method ?? ""] ?? (receipt.payment_method ?? "—");
-    const invNum   = receipt.invoices?.invoice_number ?? null;
-
-    console.log("[pdf/receipt] building PDF for", receipt.receipt_number);
-
-    const doc = ce(Document, { title: `Receipt ${receipt.receipt_number}`, author: BRAND_NAME },
-      ce(Page, { size: "A4", style: s.page },
-
-        // ── HEADER ──
-        ce(View, { style: s.header },
-          ce(View, { style: s.hLeft },
-            logoSrc
-              ? ce(Image, { src: logoSrc, style: { width: 160, height: 45, marginBottom: 6 } })
-              : ce(Text, { style: s.coName }, BRAND_SHORT),
-            ce(Text, { style: s.coDetail }, BRAND_ADDRESS),
-            ce(Text, { style: s.coDetail }, `${BRAND_PHONE} · ${BRAND_EMAIL}`),
-          ),
-          ce(View, { style: s.hRight },
-            ce(Text, { style: s.docType }, "RECEIPT"),
-            ce(Text, { style: s.docNumber }, receipt.receipt_number),
-            ce(Text, { style: s.metaLine },
-              "Payment Date: ",
-              ce(Text, { style: s.metaBold }, fmtDate(receipt.payment_date)),
-            ),
-            invNum
-              ? ce(Text, { style: s.metaLine },
-                  "Invoice: ",
-                  ce(Text, { style: s.metaBold }, invNum),
-                )
-              : null,
-          ),
-        ),
-
-        // ── RULE ──
-        ce(View, { style: s.rule }),
-
-        // ── RECEIPT FOR / RECEIVED BY ──
-        ce(View, { style: s.infoBlock },
-          ce(View, { style: s.infoCol },
-            ce(Text, { style: s.infoLabel }, "Receipt For"),
-            ce(Text, { style: s.infoName }, name),
-            phone      ? ce(Text, { style: s.infoDetail }, phone)     : null,
-            t?.country ? ce(Text, { style: s.infoDetail }, t.country) : null,
-            t?.email   ? ce(Text, { style: s.infoDetail }, t.email)   : null,
-          ),
-          ce(View, { style: s.infoCol },
-            ce(Text, { style: s.infoLabel }, "Received By"),
-            ce(Text, { style: s.infoName }, "À Bientôt Team"),
-            ce(Text, { style: s.infoDetail }, BRAND_NAME),
-          ),
-        ),
-
-        // ── AMOUNT PAID ──
-        ce(View, { style: s.amountBlock },
-          ce(Text, { style: s.amountLabel }, "Amount Paid"),
-          ce(Text, { style: s.amountValue }, fmt(receipt.amount_paid, receipt.currency)),
-        ),
-
-        // ── PAYMENT DETAILS CARD ──
-        ce(View, { style: s.card },
-          ce(View, { style: s.cardRow },
-            ce(Text, { style: s.cardLabel }, "Payment Method"),
-            ce(Text, { style: s.cardValue }, payLabel),
-          ),
-          ce(View, { style: s.cardRow },
-            ce(Text, { style: s.cardLabel }, "Payment Date"),
-            ce(Text, { style: s.cardValue }, fmtDate(receipt.payment_date)),
-          ),
-          receipt.reference_number
-            ? ce(View, { style: s.cardRow },
-                ce(Text, { style: s.cardLabel }, "Reference Number"),
-                ce(Text, { style: s.cardValue }, receipt.reference_number),
-              )
-            : null,
-          invNum
-            ? ce(View, { style: s.cardRowLast },
-                ce(Text, { style: s.cardLabel }, "Invoice Reference"),
-                ce(Text, { style: s.cardValue }, invNum),
-              )
-            : ce(View, { style: s.cardRowLast }),
-        ),
-
-        // ── NOTES ──
-        receipt.notes
-          ? ce(View, { style: s.bottom },
-              ce(View, { style: { ...s.bottomCol, marginRight: 0 } },
-                ce(Text, { style: s.bottomLabel }, "Notes"),
-                ce(Text, { style: s.bottomText }, receipt.notes),
-              ),
-            )
-          : null,
-
-        // ── FOOTER ──
-        ce(View, { fixed: true, style: s.footer },
-          ce(Text, { style: s.footerText },
-            `Thank you for choosing ${BRAND_NAME} · ${BRAND_TAGLINE} · ${BRAND_PHONE} · ${BRAND_EMAIL}`,
-          ),
-        ),
-      ),
-    );
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(doc as any);
+    console.log("[pdf/receipt] building PDF for", (data as Record<string, unknown>).receipt_number);
+    const buffer = await buildPdf(data as Record<string, unknown>);
     console.log("[pdf/receipt] PDF rendered, size:", buffer.length, "bytes");
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type":        "application/pdf",
-        "Content-Disposition": `attachment; filename="${receipt.receipt_number}.pdf"`,
+        "Content-Disposition": `attachment; filename="${(data as Record<string, unknown>).receipt_number}.pdf"`,
       },
     });
   } catch (err) {

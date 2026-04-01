@@ -1,10 +1,7 @@
-import React from "react";
 import { existsSync } from "fs";
 import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
-import {
-  renderToBuffer, Document, Page, View, Text, Image, StyleSheet,
-} from "@react-pdf/renderer";
+import PDFDocument from "pdfkit";
 import { createClient } from "@/lib/supabase/server";
 
 export const runtime = "nodejs";
@@ -22,13 +19,13 @@ const BRAND_EMAIL   = "abientottours2023@gmail.com";
 const BRAND_PHONE   = "+256 788 138 721";
 
 // ── Palette ──────────────────────────────────────────────────────────────────
-const TEAL       = "#2BBFB3";
-const DARK       = "#1a1a1a";
-const GRAY       = "#6b7280";
-const BORDER     = "#e5e7eb";
-const TEAL_LIGHT = "#e6f9f8";
+const TEAL        = "#2BBFB3";
+const DARK        = "#1a1a1a";
+const GRAY        = "#6b7280";
+const BORDER_GRAY = "#e5e7eb";
+const TEAL_LIGHT  = "#e6f9f8";
 
-const STATUS_DOT: Record<string, string> = {
+const STATUS_COLOR: Record<string, string> = {
   draft: "#9ca3af", sent: "#2BBFB3", paid: "#16a34a",
   cancelled: "#dc2626", approved: "#16a34a", rejected: "#dc2626", expired: "#d97706",
 };
@@ -57,72 +54,220 @@ function fmtDate(d: string | null): string {
   });
 }
 
-// ── Styles ───────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  page:           { paddingTop: 40, paddingHorizontal: 48, paddingBottom: 60,
-                    fontFamily: "Helvetica", backgroundColor: "#ffffff" },
-  header:         { flexDirection: "row", justifyContent: "space-between", marginBottom: 14 },
-  hLeft:          { flexDirection: "column" },
-  hRight:         { alignItems: "flex-end" },
-  docType:        { fontFamily: "Helvetica-Bold", fontSize: 30, color: DARK, marginBottom: 2 },
-  docNumber:      { fontFamily: "Helvetica-Bold", fontSize: 16, color: TEAL, marginBottom: 3 },
-  metaLine:       { fontSize: 9, color: GRAY, marginBottom: 2 },
-  metaBold:       { fontFamily: "Helvetica-Bold", fontSize: 9, color: DARK },
-  statusRow:      { flexDirection: "row", alignItems: "center", marginTop: 3 },
-  statusDot:      { width: 7, height: 7, borderRadius: 4, marginRight: 4 },
-  statusText:     { fontFamily: "Helvetica-Bold", fontSize: 9, textTransform: "uppercase" },
-  coName:         { fontFamily: "Helvetica-Bold", fontSize: 14, color: DARK, marginBottom: 6 },
-  coDetail:       { fontSize: 8, color: GRAY, marginBottom: 1 },
-  rule:           { height: 1, backgroundColor: "#d1d5db", marginBottom: 16 },
-  infoBlock:      { flexDirection: "row", justifyContent: "space-between", marginBottom: 16 },
-  infoCol:        { width: "46%" },
-  infoLabel:      { fontFamily: "Helvetica-Bold", fontSize: 8, color: TEAL,
-                    textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 },
-  infoName:       { fontFamily: "Helvetica-Bold", fontSize: 14, color: DARK, marginBottom: 3 },
-  infoDetail:     { fontSize: 9, color: GRAY, marginBottom: 1 },
-  notesBanner:    { backgroundColor: TEAL_LIGHT, borderLeftWidth: 3, borderLeftColor: TEAL,
-                    paddingVertical: 8, paddingHorizontal: 12, marginBottom: 16, borderRadius: 2 },
-  notesBannerTxt: { fontFamily: "Helvetica-Bold", fontSize: 9.5, color: TEAL },
-  tHead:          { flexDirection: "row", backgroundColor: TEAL_LIGHT,
-                    paddingVertical: 6, paddingHorizontal: 8, borderRadius: 3 },
-  tRow:           { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 8,
-                    borderBottomWidth: 1, borderBottomColor: BORDER },
-  tHeadCell:      { fontFamily: "Helvetica-Bold", fontSize: 8, color: DARK,
-                    textTransform: "uppercase", letterSpacing: 0.4 },
-  tSvcLabel:      { fontFamily: "Helvetica-Bold", fontSize: 8, color: TEAL,
-                    textTransform: "uppercase", marginBottom: 2 },
-  tDesc:          { fontSize: 8.5, color: GRAY },
-  tCell:          { fontSize: 9, color: DARK },
-  c1:             { width: "28%" },
-  c2:             { width: "16%" },
-  c3:             { width: "13%" },
-  c4:             { width: "7%",  textAlign: "right" },
-  c5:             { width: "18%", textAlign: "right" },
-  c6:             { width: "18%", textAlign: "right" },
-  totals:         { alignSelf: "flex-end", width: "42%", marginTop: 6, marginBottom: 20 },
-  totRow:         { flexDirection: "row", justifyContent: "space-between", paddingVertical: 3 },
-  totLabel:       { fontSize: 9, color: GRAY },
-  totValue:       { fontSize: 9, color: DARK },
-  totGrandRow:    { flexDirection: "row", justifyContent: "space-between",
-                    paddingTop: 7, borderTopWidth: 1.5, borderTopColor: BORDER, marginTop: 4 },
-  totGrandLabel:  { fontFamily: "Helvetica-Bold", fontSize: 11, color: DARK },
-  totGrandAmt:    { fontFamily: "Helvetica-Bold", fontSize: 16, color: TEAL },
-  bottom:         { flexDirection: "row", marginTop: 14 },
-  bottomCol:      { flex: 1, marginRight: 16 },
-  bottomLabel:    { fontFamily: "Helvetica-Bold", fontSize: 8, color: TEAL,
-                    textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 5 },
-  bottomText:     { fontSize: 8.5, color: GRAY, lineHeight: 1.55 },
-  footer:         { position: "absolute", bottom: 20, left: 48, right: 48,
-                    borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 7 },
-  footerText:     { fontSize: 7.5, color: "#9ca3af", textAlign: "center" },
-});
+function buildPdf(quotation: Record<string, unknown>): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = new PDFDocument({ size: "A4", margin: 0, bufferPages: true, info: {
+      Title: `Quotation ${quotation.number}`,
+      Author: BRAND_NAME,
+    }});
+
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const t     = quotation.travellers as any;
+    const items = (quotation.quotation_items ?? []) as Record<string, unknown>[];
+    const name  = t ? `${t.first_name} ${t.last_name}` : "—";
+    const phone = t?.phone_number
+      ? [t.phone_code, t.phone_number].filter(Boolean).join(" ")
+      : null;
+    const taxAmt   = ((quotation.subtotal as number) - (quotation.discount as number)) * ((quotation.tax_rate as number) / 100);
+    const dotColor = STATUS_COLOR[quotation.status as string] ?? TEAL;
+
+    const PAGE_W = 595.28;
+    const PAGE_H = 841.89;
+    const ML = 48;
+    const MR = 48;
+    const CONTENT_W = PAGE_W - ML - MR;
+
+    let y = 40;
+
+    // ── HEADER ───────────────────────────────────────────────────────────────
+    if (logoSrc) {
+      doc.image(logoSrc, ML, y, { width: 150, height: 42 });
+    } else {
+      doc.font("Helvetica-Bold").fontSize(16).fillColor(DARK).text(BRAND_SHORT, ML, y + 6);
+    }
+
+    doc.font("Helvetica").fontSize(8).fillColor(GRAY)
+      .text(BRAND_ADDRESS, ML, y + 52)
+      .text(`${BRAND_PHONE} · ${BRAND_EMAIL}`, ML, y + 63);
+
+    const rightX = PAGE_W - MR;
+    doc.font("Helvetica-Bold").fontSize(28).fillColor(DARK)
+      .text("QUOTATION", 0, y, { width: rightX, align: "right" });
+
+    doc.font("Helvetica-Bold").fontSize(16).fillColor(TEAL)
+      .text(String(quotation.number), 0, y + 36, { width: rightX, align: "right" });
+
+    doc.font("Helvetica").fontSize(9).fillColor(GRAY)
+      .text(`Issued: ${fmtDate(quotation.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
+
+    if (quotation.expiry_date) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY)
+        .text("Expires: ", 0, y + 68, { width: rightX - 40, align: "right", continued: true })
+        .font("Helvetica-Bold").fillColor(DARK)
+        .text(fmtDate(quotation.expiry_date as string));
+    }
+
+    const statusY = quotation.expiry_date ? y + 82 : y + 70;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dotTextWidth = (doc as any).widthOfString((quotation.status as string).toUpperCase(), { fontSize: 9 });
+    const rowWidth = 10 + dotTextWidth;
+    const dotX = PAGE_W - MR - rowWidth;
+    doc.circle(dotX + 3.5, statusY + 4.5, 3.5).fill(dotColor);
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(dotColor)
+      .text((quotation.status as string).toUpperCase(), dotX + 10, statusY, { lineBreak: false });
+
+    y = 120;
+
+    // ── DIVIDER ──────────────────────────────────────────────────────────────
+    doc.moveTo(ML, y).lineTo(PAGE_W - MR, y).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
+    y += 16;
+
+    // ── QUOTE FOR / CONSULTANT ───────────────────────────────────────────────
+    const colW = CONTENT_W * 0.46;
+
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
+      .text("QUOTE FOR", ML, y);
+    y += 14;
+    doc.font("Helvetica-Bold").fontSize(13).fillColor(DARK).text(name, ML, y);
+    y += 18;
+    if (phone) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(phone, ML, y);
+      y += 12;
+    }
+    if (t?.country) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(t.country, ML, y);
+      y += 12;
+    }
+    if (t?.email) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(t.email, ML, y);
+      y += 12;
+    }
+
+    const consultY = y - 18 - (phone ? 12 : 0) - (t?.country ? 12 : 0) - (t?.email ? 12 : 0) - 14;
+    const consultX = ML + colW + CONTENT_W * 0.08;
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL).text("CONSULTANT", consultX, consultY);
+    doc.font("Helvetica-Bold").fontSize(13).fillColor(DARK).text("À Bientôt Team", consultX, consultY + 14);
+    doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(BRAND_NAME, consultX, consultY + 32);
+
+    y += 12;
+
+    // ── NOTES BANNER ─────────────────────────────────────────────────────────
+    if (quotation.notes) {
+      doc.rect(ML, y, CONTENT_W, 22).fill(TEAL_LIGHT);
+      doc.font("Helvetica-Bold").fontSize(9.5).fillColor(TEAL)
+        .text(String(quotation.notes), ML + 12, y + 6, { width: CONTENT_W - 24, lineBreak: false });
+      y += 30;
+    }
+
+    // ── LINE ITEMS TABLE ─────────────────────────────────────────────────────
+    const COL = {
+      c1: { x: ML,             w: CONTENT_W * 0.28 },
+      c2: { x: ML + CONTENT_W * 0.28, w: CONTENT_W * 0.16 },
+      c3: { x: ML + CONTENT_W * 0.44, w: CONTENT_W * 0.13 },
+      c4: { x: ML + CONTENT_W * 0.57, w: CONTENT_W * 0.07 },
+      c5: { x: ML + CONTENT_W * 0.64, w: CONTENT_W * 0.18 },
+      c6: { x: ML + CONTENT_W * 0.82, w: CONTENT_W * 0.18 },
+    };
+
+    doc.rect(ML, y, CONTENT_W, 22).fill(TEAL_LIGHT);
+
+    const headY = y + 7;
+    doc.font("Helvetica-Bold").fontSize(8).fillColor(DARK);
+    doc.text("SERVICE",    COL.c1.x + 4, headY, { width: COL.c1.w, lineBreak: false });
+    doc.text("TRAVELLER",  COL.c2.x,     headY, { width: COL.c2.w, lineBreak: false });
+    doc.text("DATE",       COL.c3.x,     headY, { width: COL.c3.w, lineBreak: false });
+    doc.text("PAX",        COL.c4.x,     headY, { width: COL.c4.w, align: "right", lineBreak: false });
+    doc.text("UNIT PRICE", COL.c5.x,     headY, { width: COL.c5.w, align: "right", lineBreak: false });
+    doc.text("TOTAL",      COL.c6.x,     headY, { width: COL.c6.w, align: "right", lineBreak: false });
+    y += 22;
+
+    for (const item of items) {
+      const rowH = 36;
+      doc.moveTo(ML, y + rowH).lineTo(PAGE_W - MR, y + rowH).strokeColor(BORDER_GRAY).lineWidth(0.5).stroke();
+
+      const rowY = y + 7;
+      doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
+        .text(SVC[item.type as string] ?? (String(item.type ?? "SERVICE")).toUpperCase(), COL.c1.x + 4, rowY, { width: COL.c1.w - 4, lineBreak: false });
+      doc.font("Helvetica").fontSize(8).fillColor(GRAY)
+        .text(String(item.description ?? ""), COL.c1.x + 4, rowY + 11, { width: COL.c1.w - 4, lineBreak: false });
+
+      doc.font("Helvetica").fontSize(9).fillColor(DARK)
+        .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
+      doc.text(item.travel_date ? fmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
+      doc.text(String(item.quantity), COL.c4.x, rowY, { width: COL.c4.w, align: "right", lineBreak: false });
+      doc.text(fmt(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
+      doc.text(fmt((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
+
+      y += rowH;
+    }
+
+    y += 10;
+
+    // ── TOTALS ───────────────────────────────────────────────────────────────
+    const totX = ML + CONTENT_W * 0.58;
+    const totW = CONTENT_W * 0.42;
+
+    doc.font("Helvetica").fontSize(9).fillColor(GRAY)
+      .text("Subtotal", totX, y, { width: totW * 0.55, lineBreak: false })
+      .fillColor(DARK)
+      .text(fmt(quotation.subtotal as number, quotation.currency as string), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+    y += 16;
+
+    if ((quotation.discount as number) > 0) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY)
+        .text("Discount", totX, y, { width: totW * 0.55, lineBreak: false })
+        .fillColor("#dc2626")
+        .text(`-${fmt(quotation.discount as number, quotation.currency as string)}`, totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+      y += 16;
+    }
+
+    if ((quotation.tax_rate as number) > 0) {
+      doc.font("Helvetica").fontSize(9).fillColor(GRAY)
+        .text(`Tax / VAT (${quotation.tax_rate}%)`, totX, y, { width: totW * 0.55, lineBreak: false })
+        .fillColor(DARK)
+        .text(fmt(taxAmt, quotation.currency as string), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+      y += 16;
+    }
+
+    doc.moveTo(totX, y + 4).lineTo(PAGE_W - MR, y + 4).strokeColor(BORDER_GRAY).lineWidth(1.5).stroke();
+    y += 12;
+
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(DARK)
+      .text("Estimated Total", totX, y, { width: totW * 0.5, lineBreak: false })
+      .font("Helvetica-Bold").fontSize(16).fillColor(TEAL)
+      .text(fmt(quotation.total as number, quotation.currency as string), totX + totW * 0.5, y - 3, { width: totW * 0.5, align: "right", lineBreak: false });
+    y += 28;
+
+    // ── TERMS ────────────────────────────────────────────────────────────────
+    if (quotation.terms) {
+      doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL).text("TERMS & CONDITIONS", ML, y);
+      doc.font("Helvetica").fontSize(8.5).fillColor(GRAY)
+        .text(String(quotation.terms), ML, y + 14, { width: CONTENT_W / 2 - 8, lineGap: 4 });
+    }
+
+    // ── FOOTER ───────────────────────────────────────────────────────────────
+    const footerY = PAGE_H - 36;
+    doc.moveTo(ML, footerY).lineTo(PAGE_W - MR, footerY).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
+    doc.font("Helvetica").fontSize(7.5).fillColor("#9ca3af")
+      .text(
+        `Thank you for choosing ${BRAND_NAME} · ${BRAND_TAGLINE} · ${BRAND_PHONE} · ${BRAND_EMAIL}`,
+        ML, footerY + 7, { width: CONTENT_W, align: "center" },
+      );
+
+    doc.end();
+  });
+}
 
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
-  const ce = React.createElement;
 
   try {
     const supabase = await createClient();
@@ -135,163 +280,20 @@ export async function GET(
       .select("*, travellers(first_name, last_name, email, country, phone_number, phone_code), quotation_items(*)")
       .eq("id", id)
       .single();
+
     if (error || !data) {
       console.error("[pdf/quotation] supabase error:", error);
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const quotation = data as any;
-    const t         = quotation.travellers;
-    const name      = t ? `${t.first_name} ${t.last_name}` : "—";
-    const phone     = t?.phone_number
-      ? [t.phone_code, t.phone_number].filter(Boolean).join(" ")
-      : null;
-    const items    = (quotation.quotation_items ?? []) as any[];
-    const taxAmt   = (quotation.subtotal - quotation.discount) * (quotation.tax_rate / 100);
-    const dotColor = STATUS_DOT[quotation.status] ?? TEAL;
-
-    console.log("[pdf/quotation] building PDF for", quotation.number);
-
-    const doc = ce(Document, { title: `Quotation ${quotation.number}`, author: BRAND_NAME },
-      ce(Page, { size: "A4", style: s.page },
-
-        // ── HEADER ──
-        ce(View, { style: s.header },
-          ce(View, { style: s.hLeft },
-            logoSrc
-              ? ce(Image, { src: logoSrc, style: { width: 160, height: 45, marginBottom: 6 } })
-              : ce(Text, { style: s.coName }, BRAND_SHORT),
-            ce(Text, { style: s.coDetail }, BRAND_ADDRESS),
-            ce(Text, { style: s.coDetail }, `${BRAND_PHONE} · ${BRAND_EMAIL}`),
-          ),
-          ce(View, { style: s.hRight },
-            ce(Text, { style: s.docType }, "QUOTATION"),
-            ce(Text, { style: s.docNumber }, quotation.number),
-            ce(Text, { style: s.metaLine }, `Issued: ${fmtDate(quotation.issue_date)}`),
-            quotation.expiry_date
-              ? ce(Text, { style: s.metaLine },
-                  "Expires: ",
-                  ce(Text, { style: s.metaBold }, fmtDate(quotation.expiry_date)),
-                )
-              : null,
-            ce(View, { style: s.statusRow },
-              ce(View, { style: { ...s.statusDot, backgroundColor: dotColor } }),
-              ce(Text, { style: { ...s.statusText, color: dotColor } }, quotation.status.toUpperCase()),
-            ),
-          ),
-        ),
-
-        // ── RULE ──
-        ce(View, { style: s.rule }),
-
-        // ── QUOTE FOR / CONSULTANT ──
-        ce(View, { style: s.infoBlock },
-          ce(View, { style: s.infoCol },
-            ce(Text, { style: s.infoLabel }, "Quote For"),
-            ce(Text, { style: s.infoName }, name),
-            phone      ? ce(Text, { style: s.infoDetail }, phone)     : null,
-            t?.country ? ce(Text, { style: s.infoDetail }, t.country) : null,
-            t?.email   ? ce(Text, { style: s.infoDetail }, t.email)   : null,
-          ),
-          ce(View, { style: s.infoCol },
-            ce(Text, { style: s.infoLabel }, "Consultant"),
-            ce(Text, { style: s.infoName }, "À Bientôt Team"),
-            ce(Text, { style: s.infoDetail }, BRAND_NAME),
-          ),
-        ),
-
-        // ── NOTES BANNER ──
-        quotation.notes
-          ? ce(View, { style: s.notesBanner },
-              ce(Text, { style: s.notesBannerTxt }, quotation.notes),
-            )
-          : null,
-
-        // ── LINE ITEMS TABLE ──
-        ce(View, { style: { marginBottom: 4 } },
-          ce(View, { style: s.tHead },
-            ce(Text, { style: { ...s.tHeadCell, ...s.c1 } }, "Service"),
-            ce(Text, { style: { ...s.tHeadCell, ...s.c2 } }, "Traveller"),
-            ce(Text, { style: { ...s.tHeadCell, ...s.c3 } }, "Date"),
-            ce(Text, { style: { ...s.tHeadCell, ...s.c4 } }, "Pax"),
-            ce(Text, { style: { ...s.tHeadCell, ...s.c5 } }, "Unit Price"),
-            ce(Text, { style: { ...s.tHeadCell, ...s.c6 } }, "Total"),
-          ),
-          ...items.map((item: any, i: number) =>
-            ce(View, { key: i, style: s.tRow },
-              ce(View, { style: s.c1 },
-                ce(Text, { style: s.tSvcLabel },
-                  SVC[item.type ?? ""] ?? (item.type ?? "SERVICE").toUpperCase(),
-                ),
-                ce(Text, { style: s.tDesc }, item.description ?? ""),
-              ),
-              ce(Text, { style: { ...s.tCell, ...s.c2 } }, item.traveller_name ?? "—"),
-              ce(Text, { style: { ...s.tCell, ...s.c3 } },
-                item.travel_date ? fmtDate(item.travel_date) : "—",
-              ),
-              ce(Text, { style: { ...s.tCell, ...s.c4 } }, String(item.quantity)),
-              ce(Text, { style: { ...s.tCell, ...s.c5 } }, fmt(item.unit_price, item.currency)),
-              ce(Text, { style: { ...s.tCell, ...s.c6 } },
-                fmt(item.quantity * item.unit_price, item.currency),
-              ),
-            )
-          ),
-        ),
-
-        // ── TOTALS ──
-        ce(View, { style: s.totals },
-          ce(View, { style: s.totRow },
-            ce(Text, { style: s.totLabel }, "Subtotal"),
-            ce(Text, { style: s.totValue }, fmt(quotation.subtotal, quotation.currency)),
-          ),
-          quotation.discount > 0
-            ? ce(View, { style: s.totRow },
-                ce(Text, { style: s.totLabel }, "Discount"),
-                ce(Text, { style: { ...s.totValue, color: "#dc2626" } },
-                  `-${fmt(quotation.discount, quotation.currency)}`,
-                ),
-              )
-            : null,
-          quotation.tax_rate > 0
-            ? ce(View, { style: s.totRow },
-                ce(Text, { style: s.totLabel }, `Tax / VAT (${quotation.tax_rate}%)`),
-                ce(Text, { style: s.totValue }, fmt(taxAmt, quotation.currency)),
-              )
-            : null,
-          ce(View, { style: s.totGrandRow },
-            ce(Text, { style: s.totGrandLabel }, "Estimated Total"),
-            ce(Text, { style: s.totGrandAmt }, fmt(quotation.total, quotation.currency)),
-          ),
-        ),
-
-        // ── TERMS (notes shown in banner above) ──
-        quotation.terms
-          ? ce(View, { style: s.bottom },
-              ce(View, { style: { ...s.bottomCol, marginRight: 0 } },
-                ce(Text, { style: s.bottomLabel }, "Terms & Conditions"),
-                ce(Text, { style: s.bottomText }, quotation.terms),
-              ),
-            )
-          : null,
-
-        // ── FOOTER ──
-        ce(View, { fixed: true, style: s.footer },
-          ce(Text, { style: s.footerText },
-            `Thank you for choosing ${BRAND_NAME} · ${BRAND_TAGLINE} · ${BRAND_PHONE} · ${BRAND_EMAIL}`,
-          ),
-        ),
-      ),
-    );
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const buffer = await renderToBuffer(doc as any);
+    console.log("[pdf/quotation] building PDF for", (data as Record<string, unknown>).number);
+    const buffer = await buildPdf(data as Record<string, unknown>);
     console.log("[pdf/quotation] PDF rendered, size:", buffer.length, "bytes");
 
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type":        "application/pdf",
-        "Content-Disposition": `attachment; filename="${quotation.number}.pdf"`,
+        "Content-Disposition": `attachment; filename="${(data as Record<string, unknown>).number}.pdf"`,
       },
     });
   } catch (err) {
