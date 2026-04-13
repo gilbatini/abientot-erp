@@ -1,4 +1,4 @@
-﻿export type Json =
+export type Json =
   | string
   | number
   | boolean
@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      assistant_conversations: {
+        Row: {
+          agent_id: string | null
+          agent_name: string | null
+          created_at: string | null
+          id: string
+          interface: string
+          messages: Json
+          pdf_url: string | null
+          quote_data: Json | null
+          status: string
+          updated_at: string | null
+          wa_phone: string | null
+        }
+        Insert: {
+          agent_id?: string | null
+          agent_name?: string | null
+          created_at?: string | null
+          id?: string
+          interface?: string
+          messages?: Json
+          pdf_url?: string | null
+          quote_data?: Json | null
+          status?: string
+          updated_at?: string | null
+          wa_phone?: string | null
+        }
+        Update: {
+          agent_id?: string | null
+          agent_name?: string | null
+          created_at?: string | null
+          id?: string
+          interface?: string
+          messages?: Json
+          pdf_url?: string | null
+          quote_data?: Json | null
+          status?: string
+          updated_at?: string | null
+          wa_phone?: string | null
+        }
+        Relationships: []
+      }
       invoice_items: {
         Row: {
           currency: string
@@ -448,6 +490,33 @@ export type Database = {
           key?: string
           last?: number
           year?: number
+        }
+        Relationships: []
+      }
+      team_phone_numbers: {
+        Row: {
+          active: boolean
+          agent_name: string
+          created_at: string | null
+          id: string
+          phone: string
+          role: string
+        }
+        Insert: {
+          active?: boolean
+          agent_name: string
+          created_at?: string | null
+          id?: string
+          phone: string
+          role?: string
+        }
+        Update: {
+          active?: boolean
+          agent_name?: string
+          created_at?: string | null
+          id?: string
+          phone?: string
+          role?: string
         }
         Relationships: []
       }

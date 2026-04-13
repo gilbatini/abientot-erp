@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { QuoteAssistant } from "@/components/QuoteAssistant";
 import type { Role } from "@/types/app";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <main className="ml-60 p-6 min-h-screen">
         {children}
       </main>
+      <QuoteAssistant role={role} agentName={name} />
     </div>
   );
 }
