@@ -99,13 +99,15 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       .text(`Issued: ${fmtDate(quotation.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
 
     if (quotation.expiry_date) {
+      // +16 px from Issued line (was +68) to prevent overlap
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
-        .text("Expires: ", 0, y + 68, { width: rightX - 40, align: "right", continued: true })
+        .text("Expires: ", 0, y + 72, { width: rightX - 40, align: "right", continued: true })
         .font("Helvetica-Bold").fillColor(DARK)
         .text(fmtDate(quotation.expiry_date as string));
     }
 
-    const statusY = quotation.expiry_date ? y + 82 : y + 70;
+    // Status badge — pushed down to clear expiry line and divider
+    const statusY = quotation.expiry_date ? y + 88 : y + 72;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dotTextWidth = (doc as any).widthOfString((quotation.status as string).toUpperCase(), { fontSize: 9 });
     const rowWidth = 10 + dotTextWidth;
@@ -114,7 +116,8 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.font("Helvetica-Bold").fontSize(9).fillColor(dotColor)
       .text((quotation.status as string).toUpperCase(), dotX + 10, statusY, { lineBreak: false });
 
-    y = 120;
+    // Divider starts below the tallest header element (was 120, now 140)
+    y = 140;
 
     // ── DIVIDER ──────────────────────────────────────────────────────────────
     doc.moveTo(ML, y).lineTo(PAGE_W - MR, y).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
@@ -180,21 +183,34 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     y += 22;
 
     for (const item of items) {
-      const rowH = 36;
-      doc.moveTo(ML, y + rowH).lineTo(PAGE_W - MR, y + rowH).strokeColor(BORDER_GRAY).lineWidth(0.5).stroke();
+      const descText = String(item.description ?? "");
 
-      const rowY = y + 7;
+      // Measure description height so the row expands to fit wrapped text
+      doc.font("Helvetica").fontSize(8);
+      const descH = doc.heightOfString(descText, { width: COL.c1.w - 4 });
+
+      // rowH: 7 top pad + 11 service label + description + 8 bottom pad, min 36
+      const rowH = Math.max(36, 7 + 11 + descH + 8);
+      const rowY  = y + 7;
+
+      // Service type label
       doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
         .text(SVC[item.type as string] ?? (String(item.type ?? "SERVICE")).toUpperCase(), COL.c1.x + 4, rowY, { width: COL.c1.w - 4, lineBreak: false });
-      doc.font("Helvetica").fontSize(8).fillColor(GRAY)
-        .text(String(item.description ?? ""), COL.c1.x + 4, rowY + 11, { width: COL.c1.w - 4, lineBreak: false });
 
+      // Description — allow wrapping (no lineBreak: false)
+      doc.font("Helvetica").fontSize(8).fillColor(GRAY)
+        .text(descText, COL.c1.x + 4, rowY + 11, { width: COL.c1.w - 4 });
+
+      // Remaining columns (single-line, top-aligned)
       doc.font("Helvetica").fontSize(9).fillColor(DARK)
         .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
       doc.text(item.travel_date ? fmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
       doc.text(String(item.quantity), COL.c4.x, rowY, { width: COL.c4.w, align: "right", lineBreak: false });
       doc.text(fmt(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
       doc.text(fmt((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
+
+      // Separator drawn after content so it follows the actual row bottom
+      doc.moveTo(ML, y + rowH).lineTo(PAGE_W - MR, y + rowH).strokeColor(BORDER_GRAY).lineWidth(0.5).stroke();
 
       y += rowH;
     }
