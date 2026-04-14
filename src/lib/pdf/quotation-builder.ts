@@ -2,8 +2,12 @@ import { existsSync } from "fs";
 import { join } from "path";
 import PDFDocument from "pdfkit";
 
-const logoPng = join(process.cwd(), "public", "logo.png");
-const logoSrc = existsSync(logoPng) ? logoPng : undefined;
+const logoPng    = join(process.cwd(), "public", "logo.png");
+const logoSrc    = existsSync(logoPng) ? logoPng : undefined;
+
+const sgBoldPath = join(process.cwd(), "public", "fonts", "SpaceGrotesk-Bold.ttf");
+const sgRegPath  = join(process.cwd(), "public", "fonts", "SpaceGrotesk-Regular.ttf");
+const hasSG      = existsSync(sgBoldPath) && existsSync(sgRegPath);
 
 const BRAND_NAME    = "À Bientôt Tour & Travels Ltd";
 const BRAND_SHORT   = "À Bientôt";
@@ -13,9 +17,9 @@ const BRAND_EMAIL   = "abientottours2023@gmail.com";
 const BRAND_PHONE   = "+256 788 138 721";
 
 const TEAL        = "#2BBFB3";
-const DARK        = "#1a1a1a";
-const GRAY        = "#6b7280";
-const BORDER_GRAY = "#e5e7eb";
+const DARK        = "#202124";
+const GRAY        = "#5f6368";
+const BORDER_GRAY = "#dadce0";
 const TEAL_LIGHT  = "#e6f9f8";
 
 const STATUS_COLOR: Record<string, string> = {
@@ -59,6 +63,14 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    // ── FONTS ────────────────────────────────────────────────────────────────
+    if (hasSG) {
+      doc.registerFont("SpaceGrotesk-Bold", sgBoldPath);
+      doc.registerFont("SpaceGrotesk",      sgRegPath);
+    }
+    const FONT_BOLD = hasSG ? "SpaceGrotesk-Bold" : "Helvetica-Bold";
+    const FONT_REG  = hasSG ? "SpaceGrotesk"      : "Helvetica";
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t     = quotation.travellers as any;
     const items = (quotation.quotation_items ?? []) as Record<string, unknown>[];
@@ -77,6 +89,11 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
 
     let y = 40;
 
+    // ── PAGE DECORATION ──────────────────────────────────────────────────────
+    const MM = 2.8346; // 1 mm in points
+    doc.rect(0, 0,                    PAGE_W, 7  * MM).fill(TEAL);       // top bar  7 mm
+    doc.rect(0, PAGE_H - (10 * MM),   PAGE_W, 10 * MM).fill(TEAL_LIGHT); // bottom bar 10 mm
+
     // ── HEADER ───────────────────────────────────────────────────────────────
     if (logoSrc) {
       doc.image(logoSrc, ML, y, { width: 150, height: 42 });
@@ -89,10 +106,10 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       .text(`${BRAND_PHONE} · ${BRAND_EMAIL}`, ML, y + 63);
 
     const rightX = PAGE_W - MR;
-    doc.font("Helvetica-Bold").fontSize(28).fillColor(DARK)
+    doc.font(FONT_BOLD).fontSize(26).fillColor(TEAL)
       .text("QUOTATION", 0, y, { width: rightX, align: "right" });
 
-    doc.font("Helvetica-Bold").fontSize(16).fillColor(TEAL)
+    doc.font(FONT_BOLD).fontSize(14).fillColor(DARK)
       .text(String(quotation.number), 0, y + 36, { width: rightX, align: "right" });
 
     doc.font("Helvetica").fontSize(9).fillColor(GRAY)
@@ -118,16 +135,16 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     y = 148;
 
     // ── DIVIDER ──────────────────────────────────────────────────────────────
-    doc.moveTo(ML, y).lineTo(PAGE_W - MR, y).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
+    doc.moveTo(ML, y).lineTo(PAGE_W - MR, y).strokeColor(TEAL).lineWidth(3).stroke();
     y += 16;
 
     // ── QUOTE FOR / CONSULTANT ───────────────────────────────────────────────
     const colW = CONTENT_W * 0.46;
 
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
+    doc.font(FONT_BOLD).fontSize(8).fillColor(TEAL)
       .text("QUOTE FOR", ML, y);
     y += 14;
-    doc.font("Helvetica-Bold").fontSize(13).fillColor(DARK).text(name, ML, y);
+    doc.font(FONT_BOLD).fontSize(13).fillColor(DARK).text(name, ML, y);
     y += 18;
     if (phone) {
       doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(phone, ML, y);
@@ -144,8 +161,8 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
 
     const consultY = y - 18 - (phone ? 12 : 0) - (t?.country ? 12 : 0) - (t?.email ? 12 : 0) - 14;
     const consultX = ML + colW + CONTENT_W * 0.08;
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL).text("CONSULTANT", consultX, consultY);
-    doc.font("Helvetica-Bold").fontSize(13).fillColor(DARK).text("À Bientôt Team", consultX, consultY + 14);
+    doc.font(FONT_BOLD).fontSize(8).fillColor(TEAL).text("CONSULTANT", consultX, consultY);
+    doc.font(FONT_BOLD).fontSize(13).fillColor(DARK).text("À Bientôt Team", consultX, consultY + 14);
     doc.font("Helvetica").fontSize(9).fillColor(GRAY).text(BRAND_NAME, consultX, consultY + 32);
 
     y += 12;
@@ -180,7 +197,8 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.text("TOTAL",      COL.c6.x,     headY, { width: COL.c6.w, align: "right", lineBreak: false });
     y += 22;
 
-    for (const item of items) {
+    for (let idx = 0; idx < items.length; idx++) {
+      const item     = items[idx];
       const descText = String(item.description ?? "");
 
       // Measure description height so the row expands to fit wrapped text
@@ -189,6 +207,10 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
 
       // rowH: 7 top pad + 11 service label + description + 8 bottom pad, min 36
       const rowH = Math.max(36, 7 + 11 + descH + 8);
+
+      // Alternating row background — draw before content so text sits on top
+      doc.rect(ML, y, CONTENT_W, rowH).fill(idx % 2 === 0 ? "#ffffff" : "#f8f9fa");
+
       const rowY  = y + 7;
 
       // Service type label
@@ -241,14 +263,16 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       y += 16;
     }
 
-    doc.moveTo(totX, y + 4).lineTo(PAGE_W - MR, y + 4).strokeColor(BORDER_GRAY).lineWidth(1.5).stroke();
+    doc.moveTo(totX, y + 4).lineTo(PAGE_W - MR, y + 4).strokeColor(TEAL).lineWidth(1.5).stroke();
     y += 12;
 
-    doc.font("Helvetica-Bold").fontSize(11).fillColor(DARK)
-      .text("Estimated Total", totX, y, { width: totW * 0.5, lineBreak: false })
-      .font("Helvetica-Bold").fontSize(16).fillColor(TEAL)
-      .text(fmt(quotation.total as number, quotation.currency as string), totX + totW * 0.5, y - 3, { width: totW * 0.5, align: "right", lineBreak: false });
-    y += 28;
+    // Estimated Total row — #e6f9f8 background per style reference
+    doc.rect(totX, y, PAGE_W - MR - totX, 26).fill(TEAL_LIGHT);
+    doc.font(FONT_BOLD).fontSize(11).fillColor(DARK)
+      .text("Estimated Total", totX + 6, y + 6, { width: totW * 0.5, lineBreak: false });
+    doc.font(FONT_BOLD).fontSize(13).fillColor(TEAL)
+      .text(fmt(quotation.total as number, quotation.currency as string), totX, y + 6, { width: PAGE_W - MR - totX - 6, align: "right", lineBreak: false });
+    y += 32;
 
     // ── BANKING DETAILS ──────────────────────────────────────────────────────
     const bankX = ML;
