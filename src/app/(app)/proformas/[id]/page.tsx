@@ -43,7 +43,7 @@ export default async function EditProformaPage({ params }: { params: Promise<{ i
             />
             {canEdit && !alreadyConverted && (
               <ConvertToInvoiceButton
-                onConvert={() => convertProformaToInvoice(id)}
+                onConvert={convertProformaToInvoice.bind(null, id)}
               />
             )}
           </div>

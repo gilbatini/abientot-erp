@@ -43,7 +43,7 @@ export default async function EditQuotationPage({ params }: { params: Promise<{ 
             />
             {canEdit && !alreadyConverted && (
               <ConvertToInvoiceButton
-                onConvert={() => convertQuotationToInvoice(id)}
+                onConvert={convertQuotationToInvoice.bind(null, id)}
               />
             )}
           </div>
