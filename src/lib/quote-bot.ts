@@ -264,10 +264,9 @@ export async function generateAndSavePDF(conversation: Record<string, unknown>):
     const itemRows = quoteData.items.map((item, i) => ({
       quotation_id:   quot.id,
       type:           TYPE_MAP[item.type] ?? 'flight',
-      description:    item.description,
+      description:    item.date ? `${item.description} (${item.date})` : item.description,
       traveller_name: item.traveller,
-      travel_date:    null,           // ranges not supported as DATE — stored in description
-      date_range:     item.date,      // extra column for display
+      travel_date:    null,
       quantity:       item.pax,
       unit_price:     item.unit_price,
       currency:       quoteData.currency,

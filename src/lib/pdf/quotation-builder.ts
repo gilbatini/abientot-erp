@@ -191,7 +191,7 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
 
       doc.font("Helvetica").fontSize(9).fillColor(DARK)
         .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
-      doc.text(item.travel_date ? fmtDate(item.travel_date as string) : (item.date_range ? String(item.date_range) : "—"), COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
+      doc.text(item.travel_date ? fmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
       doc.text(String(item.quantity), COL.c4.x, rowY, { width: COL.c4.w, align: "right", lineBreak: false });
       doc.text(fmt(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
       doc.text(fmt((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });

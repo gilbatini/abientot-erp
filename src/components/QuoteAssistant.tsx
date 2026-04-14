@@ -27,9 +27,6 @@ const GREETING: Message = {
 }
 
 export function QuoteAssistant({ role, agentName }: Props) {
-  // Only agents and admins can use the assistant
-  if (role === 'viewer') return null
-
   const [open,           setOpen]           = useState(false)
   const [messages,       setMessages]       = useState<Message[]>([GREETING])
   const [panelState,     setPanelState]     = useState<PanelState>('collecting')
@@ -144,6 +141,9 @@ export function QuoteAssistant({ role, agentName }: Props) {
       sendMessage()
     }
   }
+
+  // Only agents and admins can use the assistant (checked after hooks to satisfy Rules of Hooks)
+  if (role === 'viewer') return null
 
   return (
     <>
