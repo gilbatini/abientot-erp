@@ -99,15 +99,13 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       .text(`Issued: ${fmtDate(quotation.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
 
     if (quotation.expiry_date) {
-      // +16 px from Issued line (was +68) to prevent overlap
+      // y+74: 18px below Issued (y+56) — enough for 9pt text with clear leading
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
-        .text("Expires: ", 0, y + 72, { width: rightX - 40, align: "right", continued: true })
-        .font("Helvetica-Bold").fillColor(DARK)
-        .text(fmtDate(quotation.expiry_date as string));
+        .text(`Expires: ${fmtDate(quotation.expiry_date as string)}`, 0, y + 74, { width: rightX, align: "right" });
     }
 
-    // Status badge — pushed down to clear expiry line and divider
-    const statusY = quotation.expiry_date ? y + 88 : y + 72;
+    // Status badge: y+92 with expiry, y+74 without — clears both date lines
+    const statusY = quotation.expiry_date ? y + 92 : y + 74;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dotTextWidth = (doc as any).widthOfString((quotation.status as string).toUpperCase(), { fontSize: 9 });
     const rowWidth = 10 + dotTextWidth;
@@ -116,8 +114,8 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.font("Helvetica-Bold").fontSize(9).fillColor(dotColor)
       .text((quotation.status as string).toUpperCase(), dotX + 10, statusY, { lineBreak: false });
 
-    // Divider starts below the tallest header element (was 120, now 140)
-    y = 140;
+    // Divider at y=148 — clears status badge (y+92 + ~12px text height + padding)
+    y = 148;
 
     // ── DIVIDER ──────────────────────────────────────────────────────────────
     doc.moveTo(ML, y).lineTo(PAGE_W - MR, y).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
