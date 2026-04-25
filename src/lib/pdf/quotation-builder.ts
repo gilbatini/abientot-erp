@@ -86,13 +86,59 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     const ML = 48;
     const MR = 48;
     const CONTENT_W = PAGE_W - ML - MR;
+    const MM = 2.8346;
+    // Usable bottom boundary — leaves space for the footer line at PAGE_H-36
+    const CONTENT_BOTTOM = PAGE_H - 36 - 28;
 
     let y = 40;
 
-    // ── PAGE DECORATION ──────────────────────────────────────────────────────
-    const MM = 2.8346; // 1 mm in points
-    doc.rect(0, 0,                    PAGE_W, 7  * MM).fill(TEAL);       // top bar  7 mm
-    doc.rect(0, PAGE_H - (10 * MM),   PAGE_W, 10 * MM).fill(TEAL_LIGHT); // bottom bar 10 mm
+    const bankLines = [
+      "Bank: Stanbic Bank — Ntinda Branch",
+      "Account Name: ABIENTOT TOUR & TRAVELS",
+      "USD Account: 9030024157236",
+      "UGX Account: 9030024156841",
+      "Branch Code: 031008",
+    ];
+
+    // ── HELPERS ──────────────────────────────────────────────────────────────
+
+    function drawPageDecor(): void {
+      doc.rect(0, 0,                    PAGE_W, 7  * MM).fill(TEAL);
+      doc.rect(0, PAGE_H - (10 * MM),   PAGE_W, 10 * MM).fill(TEAL_LIGHT);
+    }
+
+    // Start a new page preserving brand decoration; resets y to top margin.
+    function addPageWithDecor(): void {
+      doc.addPage({ size: "A4", margin: 0 });
+      drawPageDecor();
+      y = 40;
+    }
+
+    const COL = {
+      c1: { x: ML,                      w: CONTENT_W * 0.28 },
+      c2: { x: ML + CONTENT_W * 0.28,   w: CONTENT_W * 0.16 },
+      c3: { x: ML + CONTENT_W * 0.44,   w: CONTENT_W * 0.13 },
+      c4: { x: ML + CONTENT_W * 0.57,   w: CONTENT_W * 0.07 },
+      c5: { x: ML + CONTENT_W * 0.64,   w: CONTENT_W * 0.18 },
+      c6: { x: ML + CONTENT_W * 0.82,   w: CONTENT_W * 0.18 },
+    };
+
+    // Draw the line-items table column header row at current y; advances y.
+    function drawTableHeader(): void {
+      doc.rect(ML, y, CONTENT_W, 22).fill(TEAL_LIGHT);
+      const headY = y + 7;
+      doc.font("Helvetica-Bold").fontSize(8).fillColor(DARK);
+      doc.text("SERVICE",    COL.c1.x + 4, headY, { width: COL.c1.w, lineBreak: false });
+      doc.text("TRAVELLER",  COL.c2.x,     headY, { width: COL.c2.w, lineBreak: false });
+      doc.text("DATE",       COL.c3.x,     headY, { width: COL.c3.w, lineBreak: false });
+      doc.text("PAX",        COL.c4.x,     headY, { width: COL.c4.w, align: "right", lineBreak: false });
+      doc.text("UNIT PRICE", COL.c5.x,     headY, { width: COL.c5.w, align: "right", lineBreak: false });
+      doc.text("TOTAL",      COL.c6.x,     headY, { width: COL.c6.w, align: "right", lineBreak: false });
+      y += 22;
+    }
+
+    // ── PAGE 1 DECORATION ────────────────────────────────────────────────────
+    drawPageDecor();
 
     // ── HEADER ───────────────────────────────────────────────────────────────
     if (logoSrc) {
@@ -116,12 +162,10 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       .text(`Issued: ${fmtDate(quotation.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
 
     if (quotation.expiry_date) {
-      // y+74: 18px below Issued (y+56) — enough for 9pt text with clear leading
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
         .text(`Expires: ${fmtDate(quotation.expiry_date as string)}`, 0, y + 74, { width: rightX, align: "right" });
     }
 
-    // Status badge: y+92 with expiry, y+74 without — clears both date lines
     const statusY = quotation.expiry_date ? y + 92 : y + 74;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const dotTextWidth = (doc as any).widthOfString((quotation.status as string).toUpperCase(), { fontSize: 9 });
@@ -131,7 +175,6 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.font("Helvetica-Bold").fontSize(9).fillColor(dotColor)
       .text((quotation.status as string).toUpperCase(), dotX + 10, statusY, { lineBreak: false });
 
-    // Divider at y=148 — clears status badge (y+92 + ~12px text height + padding)
     y = 148;
 
     // ── DIVIDER ──────────────────────────────────────────────────────────────
@@ -176,52 +219,32 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     }
 
     // ── LINE ITEMS TABLE ─────────────────────────────────────────────────────
-    const COL = {
-      c1: { x: ML,             w: CONTENT_W * 0.28 },
-      c2: { x: ML + CONTENT_W * 0.28, w: CONTENT_W * 0.16 },
-      c3: { x: ML + CONTENT_W * 0.44, w: CONTENT_W * 0.13 },
-      c4: { x: ML + CONTENT_W * 0.57, w: CONTENT_W * 0.07 },
-      c5: { x: ML + CONTENT_W * 0.64, w: CONTENT_W * 0.18 },
-      c6: { x: ML + CONTENT_W * 0.82, w: CONTENT_W * 0.18 },
-    };
-
-    doc.rect(ML, y, CONTENT_W, 22).fill(TEAL_LIGHT);
-
-    const headY = y + 7;
-    doc.font("Helvetica-Bold").fontSize(8).fillColor(DARK);
-    doc.text("SERVICE",    COL.c1.x + 4, headY, { width: COL.c1.w, lineBreak: false });
-    doc.text("TRAVELLER",  COL.c2.x,     headY, { width: COL.c2.w, lineBreak: false });
-    doc.text("DATE",       COL.c3.x,     headY, { width: COL.c3.w, lineBreak: false });
-    doc.text("PAX",        COL.c4.x,     headY, { width: COL.c4.w, align: "right", lineBreak: false });
-    doc.text("UNIT PRICE", COL.c5.x,     headY, { width: COL.c5.w, align: "right", lineBreak: false });
-    doc.text("TOTAL",      COL.c6.x,     headY, { width: COL.c6.w, align: "right", lineBreak: false });
-    y += 22;
+    drawTableHeader();
 
     for (let idx = 0; idx < items.length; idx++) {
       const item     = items[idx];
       const descText = String(item.description ?? "");
 
-      // Measure description height so the row expands to fit wrapped text
       doc.font("Helvetica").fontSize(8);
       const descH = doc.heightOfString(descText, { width: COL.c1.w - 4 });
+      const rowH  = Math.max(36, 7 + 11 + descH + 8);
 
-      // rowH: 7 top pad + 11 service label + description + 8 bottom pad, min 36
-      const rowH = Math.max(36, 7 + 11 + descH + 8);
+      // Page break: if this row won't fit, start a new page and re-draw the header
+      if (y + rowH > CONTENT_BOTTOM) {
+        addPageWithDecor();
+        drawTableHeader();
+      }
 
-      // Alternating row background — draw before content so text sits on top
       doc.rect(ML, y, CONTENT_W, rowH).fill(idx % 2 === 0 ? "#ffffff" : "#f8f9fa");
 
-      const rowY  = y + 7;
+      const rowY = y + 7;
 
-      // Service type label
       doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
         .text(SVC[item.type as string] ?? (String(item.type ?? "SERVICE")).toUpperCase(), COL.c1.x + 4, rowY, { width: COL.c1.w - 4, lineBreak: false });
 
-      // Description — allow wrapping (no lineBreak: false)
       doc.font("Helvetica").fontSize(8).fillColor(GRAY)
         .text(descText, COL.c1.x + 4, rowY + 11, { width: COL.c1.w - 4 });
 
-      // Remaining columns (single-line, top-aligned)
       doc.font("Helvetica").fontSize(9).fillColor(DARK)
         .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
       doc.text(item.travel_date ? fmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
@@ -229,13 +252,24 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       doc.text(fmt(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
       doc.text(fmt((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
 
-      // Separator drawn after content so it follows the actual row bottom
       doc.moveTo(ML, y + rowH).lineTo(PAGE_W - MR, y + rowH).strokeColor(BORDER_GRAY).lineWidth(0.5).stroke();
 
       y += rowH;
     }
 
     y += 10;
+
+    // ── FOOTER BLOCK: keep totals + banking + T&C together on the last page ──
+    // Estimate the height of everything below the line items table.
+    let footerBlockH = 16; // subtotal row
+    if ((quotation.discount as number) > 0) footerBlockH += 16;
+    if ((quotation.tax_rate as number) > 0) footerBlockH += 16;
+    footerBlockH += 12 + 32 + 10; // divider + estimated-total row + gap
+    footerBlockH += 12 + bankLines.length * 12 + 20; // banking header + lines + buffer
+
+    if (y + footerBlockH > CONTENT_BOTTOM) {
+      addPageWithDecor();
+    }
 
     // ── TOTALS ───────────────────────────────────────────────────────────────
     const totX = ML + CONTENT_W * 0.58;
@@ -266,7 +300,6 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.moveTo(totX, y + 4).lineTo(PAGE_W - MR, y + 4).strokeColor(TEAL).lineWidth(1.5).stroke();
     y += 12;
 
-    // Estimated Total row — #e6f9f8 background per style reference
     doc.rect(totX, y, PAGE_W - MR - totX, 26).fill(TEAL_LIGHT);
     doc.font(FONT_BOLD).fontSize(11).fillColor(DARK)
       .text("Estimated Total", totX + 6, y + 6, { width: totW * 0.5, lineBreak: false });
@@ -279,13 +312,7 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     const bankW = CONTENT_W * 0.46;
     doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL).text("BANKING DETAILS", bankX, y);
     y += 12;
-    const bankLines = [
-      "Bank: Stanbic Bank — Ntinda Branch",
-      "Account Name: ABIENTOT TOUR & TRAVELS",
-      "USD Account: 9030024157236",
-      "UGX Account: 9030024156841",
-      "Branch Code: 031008",
-    ];
+    const bankStartY = y;
     for (const line of bankLines) {
       doc.font("Helvetica").fontSize(8.5).fillColor(GRAY).text(line, bankX, y, { width: bankW, lineGap: 2 });
       y += 12;
@@ -295,21 +322,27 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     if (quotation.terms) {
       const termsX = ML + CONTENT_W * 0.5 + 8;
       const termsW = CONTENT_W * 0.5 - 8;
-      // Position terms at same y-start as banking details
-      const termsStartY = y - (bankLines.length * 12) - 12;
+      const termsStartY = bankStartY - 12; // align with banking header
       doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL).text("TERMS & CONDITIONS", termsX, termsStartY);
       doc.font("Helvetica").fontSize(8.5).fillColor(GRAY)
         .text(String(quotation.terms), termsX, termsStartY + 14, { width: termsW, lineGap: 4 });
     }
 
-    // ── FOOTER ───────────────────────────────────────────────────────────────
+    // ── FOOTER LINE ON EVERY PAGE (buffered) ─────────────────────────────────
     const footerY = PAGE_H - 36;
-    doc.moveTo(ML, footerY).lineTo(PAGE_W - MR, footerY).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
-    doc.font("Helvetica").fontSize(7.5).fillColor("#9ca3af")
-      .text(
-        `Thank you for choosing ${BRAND_NAME} · ${BRAND_TAGLINE} · ${BRAND_PHONE} · ${BRAND_EMAIL}`,
-        ML, footerY + 7, { width: CONTENT_W, align: "center" },
-      );
+    const range = doc.bufferedPageRange();
+    for (let i = 0; i < range.count; i++) {
+      doc.switchToPage(range.start + i);
+      doc.moveTo(ML, footerY).lineTo(PAGE_W - MR, footerY).strokeColor(BORDER_GRAY).lineWidth(1).stroke();
+      doc.font("Helvetica").fontSize(7.5).fillColor("#9ca3af")
+        .text(
+          `Thank you for choosing ${BRAND_NAME} · ${BRAND_TAGLINE} · ${BRAND_PHONE} · ${BRAND_EMAIL}`,
+          ML, footerY + 7, { width: CONTENT_W, align: "center" },
+        );
+    }
+
+    // Suppress unused variable warning — FONT_REG registered but referenced only via hasSG branch
+    void FONT_REG;
 
     doc.end();
   });
