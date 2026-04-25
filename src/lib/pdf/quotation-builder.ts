@@ -224,10 +224,10 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
 
     for (let idx = 0; idx < items.length; idx++) {
       const item     = items[idx];
-      const descText = String(item.description ?? "");
-
+      const descSegs = String(item.description ?? "").split('\n');
       doc.font("Helvetica").fontSize(8);
-      const descH = doc.heightOfString(descText, { width: COL.c1.w - 4 });
+      const segHeights = descSegs.map(seg => doc.heightOfString(seg || ' ', { width: COL.c1.w - 4 }));
+      const descH = segHeights.reduce((a, b) => a + b, 0);
       const rowH  = Math.max(36, 7 + 11 + descH + 8);
 
       // Page break: if this row won't fit, start a new page and re-draw the header
@@ -243,8 +243,12 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
         .text(SVC[item.type as string] ?? (String(item.type ?? "SERVICE")).toUpperCase(), COL.c1.x + 4, rowY, { width: COL.c1.w - 4, lineBreak: false });
 
-      doc.font("Helvetica").fontSize(8).fillColor(GRAY)
-        .text(descText, COL.c1.x + 4, rowY + 11, { width: COL.c1.w - 4 });
+      doc.font("Helvetica").fontSize(8).fillColor(GRAY);
+      let dY = rowY + 11;
+      for (let si = 0; si < descSegs.length; si++) {
+        doc.text(descSegs[si] || ' ', COL.c1.x + 4, dY, { width: COL.c1.w - 4 });
+        dY += segHeights[si];
+      }
 
       doc.font("Helvetica").fontSize(9).fillColor(DARK)
         .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
