@@ -33,6 +33,7 @@ const SVC: Record<string, string> = {
   flight: "FLIGHT BOOKING", airport_transfer: "AIRPORT TRANSFER",
   hotel: "HOTEL RESERVATION", safari_package: "SAFARI PACKAGE",
   glamping: "GLAMPING", bed_breakfast: "BED & BREAKFAST",
+  hotel_ferry: "TRANSFER - HOTEL TO FERRY", ferry_hotel: "TRANSFER - FERRY TO HOTEL", ferry_booking: "FERRY BOOKING",
 };
 
 function fmt(amount: number, currency: string): string {

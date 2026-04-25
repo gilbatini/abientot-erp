@@ -5,7 +5,7 @@ export type Role           = "admin" | "agent" | "viewer";
 export type InvoiceStatus  = "draft" | "sent" | "paid" | "cancelled";
 export type DocumentStatus = "draft" | "sent" | "approved" | "rejected" | "expired";
 export type PaymentMethod  = "bank_transfer" | "card" | "mobile_money" | "cash";
-export type ServiceType    = "flight" | "airport_transfer" | "hotel" | "safari_package" | "glamping" | "bed_breakfast";
+export type ServiceType    = "flight" | "airport_transfer" | "hotel" | "safari_package" | "glamping" | "bed_breakfast" | "hotel_ferry" | "ferry_hotel" | "ferry_booking";
 
 export const SERVICE_LABELS: Record<ServiceType, string> = {
   flight:           "✈️ Flight Booking",
@@ -14,6 +14,9 @@ export const SERVICE_LABELS: Record<ServiceType, string> = {
   safari_package:   "🦁 Safari Package",
   glamping:         "⛺ Glamping",
   bed_breakfast:    "🌅 Bed & Breakfast",
+  hotel_ferry:      "⛴️ Transfer - Hotel to Ferry",
+  ferry_hotel:      "⛴️ Transfer - Ferry to Hotel",
+  ferry_booking:    "⛴️ Ferry Booking",
 };
 
 export const PAYMENT_LABELS: Record<PaymentMethod, string> = {
