@@ -88,7 +88,7 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     const CONTENT_W = PAGE_W - ML - MR;
     const MM = 2.8346;
     // Usable bottom boundary — leaves space for the footer line at PAGE_H-36
-    const CONTENT_BOTTOM = PAGE_H - 36 - 28;
+    const CONTENT_BOTTOM = PAGE_H - 36 - 60;
 
     let y = 40;
 
