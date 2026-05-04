@@ -523,7 +523,10 @@ export type Database = {
           last_name: string
           notes: string | null
           passport: string | null
+          passport_file_path: string | null
           passport_img: string | null
+          passport_uploaded_at: string | null
+          passport_uploaded_by: string | null
           phone_code: string | null
           phone_number: string | null
           updated_at: string | null
@@ -539,7 +542,10 @@ export type Database = {
           last_name: string
           notes?: string | null
           passport?: string | null
+          passport_file_path?: string | null
           passport_img?: string | null
+          passport_uploaded_at?: string | null
+          passport_uploaded_by?: string | null
           phone_code?: string | null
           phone_number?: string | null
           updated_at?: string | null
@@ -555,7 +561,10 @@ export type Database = {
           last_name?: string
           notes?: string | null
           passport?: string | null
+          passport_file_path?: string | null
           passport_img?: string | null
+          passport_uploaded_at?: string | null
+          passport_uploaded_by?: string | null
           phone_code?: string | null
           phone_number?: string | null
           updated_at?: string | null

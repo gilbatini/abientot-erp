@@ -65,7 +65,14 @@ export default async function TravellersPage() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{t.email ?? "—"}</td>
                   <td className="px-4 py-3 text-gray-600">{t.country ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">{t.passport ?? "—"}</td>
+                  <td className="px-4 py-3 text-gray-500 font-mono text-xs">
+                    <div className="flex items-center gap-2">
+                      <span>{t.passport ?? "—"}</span>
+                      {t.passport_file_path && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-teal-50 text-teal-700">scan</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-4 py-3 text-gray-400 text-xs">
                     {t.created_at ? formatDate(t.created_at) : "—"}
                   </td>

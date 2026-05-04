@@ -43,10 +43,11 @@ export function TravellerForm({ initialData }: TravellerFormProps) {
     try {
       if (isEdit) {
         await update(initialData.id, payload);
+        router.push("/travellers");
       } else {
-        await create(payload);
+        const row = await create(payload);
+        router.push(`/travellers/${row.id}`);
       }
-      router.push("/travellers");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save traveller");
       setSaving(false);
@@ -137,6 +138,12 @@ export function TravellerForm({ initialData }: TravellerFormProps) {
                        focus:border-primary transition-colors resize-none"
           />
         </div>
+
+        {!isEdit && (
+          <div className="rounded-xl border border-dashed border-gray-200 px-4 py-3 text-xs text-gray-400">
+            Passport Scan — save traveller first to upload a scan
+          </div>
+        )}
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 
