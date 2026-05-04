@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { createReceipt, updateReceipt, type ReceiptWithRefs } from "@/actions/receipts";
 import { CURRENCIES, PAYMENT_LABELS } from "@/types/app";
+import { MoneyInput } from "@/components/ui/money-input";
 import type { Database } from "@/types/database";
 
 type TravellerRow = Database["public"]["Tables"]["travellers"]["Row"];
@@ -96,15 +97,16 @@ export function ReceiptForm({ travellers, invoices, initialData }: Props) {
               ))}
             </select>
           </div>
-          <Input
-            label="Amount Paid"
-            type="number"
-            min="0"
-            step="0.01"
-            value={amountPaid}
-            onChange={e => setAmountPaid(Number(e.target.value))}
-            required
-          />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-gray-700">Amount Paid</label>
+            <MoneyInput
+              value={amountPaid}
+              onChange={setAmountPaid}
+              currency={currency}
+              required
+              className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-colors"
+            />
+          </div>
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-gray-700">Currency</label>
             <select value={currency} onChange={e => setCurrency(e.target.value)} className={selectClass}>

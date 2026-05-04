@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { createQuotation, updateQuotation, type QuotationItemDraft, type QuotationWithItems } from "@/actions/quotations";
 import { CURRENCIES, SERVICE_LABELS, type ServiceType } from "@/types/app";
+import { MoneyInput } from "@/components/ui/money-input";
 import type { Database } from "@/types/database";
 
 type TravellerRow = Database["public"]["Tables"]["travellers"]["Row"];
@@ -205,12 +206,10 @@ export function QuotationForm({ travellers, initialData }: Props) {
                     />
                   </td>
                   <td className="px-3 py-2 w-28">
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
+                    <MoneyInput
                       value={item.unit_price ?? 0}
-                      onChange={e => updateItem(idx, "unit_price", Number(e.target.value))}
+                      onChange={v => updateItem(idx, "unit_price", v)}
+                      currency={currency}
                       className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-md focus:outline-none focus:ring-1 focus:ring-primary/30"
                     />
                   </td>
@@ -242,9 +241,10 @@ export function QuotationForm({ travellers, initialData }: Props) {
             </div>
             <div className="flex gap-4 items-center text-gray-600">
               <span>Discount</span>
-              <input
-                type="number" min="0" step="0.01" value={discount}
-                onChange={e => setDiscount(Number(e.target.value))}
+              <MoneyInput
+                value={discount}
+                onChange={setDiscount}
+                currency={currency}
                 className="w-28 px-2 py-1 text-xs border border-gray-200 rounded-md text-right focus:outline-none focus:ring-1 focus:ring-primary/30"
               />
             </div>
