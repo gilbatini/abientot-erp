@@ -3,6 +3,7 @@ import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import { createClient } from "@/lib/supabase/server";
+import { pdfFmtCurrency, pdfFmtDate } from "@/lib/pdf/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,24 +37,6 @@ const SVC: Record<string, string> = {
   hotel_ferry: "TRANSFER - HOTEL TO FERRY", ferry_hotel: "TRANSFER - FERRY TO HOTEL", ferry_booking: "FERRY BOOKING",
 };
 
-function fmt(amount: number, currency: string): string {
-  const SYM: Record<string, string> = {
-    USD:"$", EUR:"€", GBP:"£", UGX:"UGX ", KES:"KSh ",
-    TZS:"TSh ", RWF:"RWF ", AED:"AED ", CAD:"C$", ZAR:"R",
-  };
-  const NO_DEC = ["UGX","KES","TZS","RWF"];
-  const sym = SYM[currency] ?? currency + " ";
-  return NO_DEC.includes(currency)
-    ? sym + Math.round(amount).toLocaleString("en-US")
-    : sym + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-function fmtDate(d: string | null): string {
-  if (!d) return "—";
-  return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric",
-  });
-}
 
 function buildPdf(proforma: Record<string, unknown>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -70,6 +53,7 @@ function buildPdf(proforma: Record<string, unknown>): Promise<Buffer> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t     = proforma.travellers as any;
     const items = (proforma.proforma_items ?? []) as Record<string, unknown>[];
+    const docCurrency = (items[0]?.currency as string | undefined) ?? (proforma.currency as string);
     const name  = t ? `${t.first_name} ${t.last_name}` : "—";
     const phone = t?.phone_number
       ? [t.phone_code, t.phone_number].filter(Boolean).join(" ")
@@ -104,13 +88,13 @@ function buildPdf(proforma: Record<string, unknown>): Promise<Buffer> {
       .text(String(proforma.number), 0, y + 36, { width: rightX, align: "right" });
 
     doc.font("Helvetica").fontSize(9).fillColor(GRAY)
-      .text(`Issued: ${fmtDate(proforma.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
+      .text(`Issued: ${pdfFmtDate(proforma.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
 
     if (proforma.expiry_date) {
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
         .text("Expires: ", 0, y + 68, { width: rightX - 40, align: "right", continued: true })
         .font("Helvetica-Bold").fillColor(DARK)
-        .text(fmtDate(proforma.expiry_date as string));
+        .text(pdfFmtDate(proforma.expiry_date as string));
     }
 
     const statusY = proforma.expiry_date ? y + 82 : y + 70;
@@ -198,10 +182,10 @@ function buildPdf(proforma: Record<string, unknown>): Promise<Buffer> {
 
       doc.font("Helvetica").fontSize(9).fillColor(DARK)
         .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
-      doc.text(item.travel_date ? fmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
+      doc.text(item.travel_date ? pdfFmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
       doc.text(String(item.quantity), COL.c4.x, rowY, { width: COL.c4.w, align: "right", lineBreak: false });
-      doc.text(fmt(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
-      doc.text(fmt((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
+      doc.text(pdfFmtCurrency(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
+      doc.text(pdfFmtCurrency((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
 
       y += rowH;
     }
@@ -215,14 +199,14 @@ function buildPdf(proforma: Record<string, unknown>): Promise<Buffer> {
     doc.font("Helvetica").fontSize(9).fillColor(GRAY)
       .text("Subtotal", totX, y, { width: totW * 0.55, lineBreak: false })
       .fillColor(DARK)
-      .text(fmt(proforma.subtotal as number, proforma.currency as string), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+      .text(pdfFmtCurrency(proforma.subtotal as number, docCurrency), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
     y += 16;
 
     if ((proforma.discount as number) > 0) {
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
         .text("Discount", totX, y, { width: totW * 0.55, lineBreak: false })
         .fillColor("#dc2626")
-        .text(`-${fmt(proforma.discount as number, proforma.currency as string)}`, totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+        .text(`-${pdfFmtCurrency(proforma.discount as number, docCurrency)}`, totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
       y += 16;
     }
 
@@ -230,7 +214,7 @@ function buildPdf(proforma: Record<string, unknown>): Promise<Buffer> {
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
         .text(`Tax / VAT (${proforma.tax_rate}%)`, totX, y, { width: totW * 0.55, lineBreak: false })
         .fillColor(DARK)
-        .text(fmt(taxAmt, proforma.currency as string), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+        .text(pdfFmtCurrency(taxAmt, docCurrency), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
       y += 16;
     }
 
@@ -240,7 +224,7 @@ function buildPdf(proforma: Record<string, unknown>): Promise<Buffer> {
     doc.font("Helvetica-Bold").fontSize(11).fillColor(DARK)
       .text("Estimated Total", totX, y, { width: totW * 0.5, lineBreak: false })
       .font("Helvetica-Bold").fontSize(16).fillColor(TEAL)
-      .text(fmt(proforma.total as number, proforma.currency as string), totX + totW * 0.5, y - 3, { width: totW * 0.5, align: "right", lineBreak: false });
+      .text(pdfFmtCurrency(proforma.total as number, docCurrency), totX + totW * 0.5, y - 3, { width: totW * 0.5, align: "right", lineBreak: false });
     y += 28;
 
     // ── TERMS ────────────────────────────────────────────────────────────────

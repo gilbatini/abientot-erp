@@ -3,6 +3,7 @@ import { join } from "path";
 import { NextRequest, NextResponse } from "next/server";
 import PDFDocument from "pdfkit";
 import { createClient } from "@/lib/supabase/server";
+import { pdfFmtCurrency, pdfFmtDate } from "@/lib/pdf/format";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,24 +33,6 @@ const PAYMENT_LABELS: Record<string, string> = {
   cash:          "Cash",
 };
 
-function fmt(amount: number, currency: string): string {
-  const SYM: Record<string, string> = {
-    USD:"$", EUR:"€", GBP:"£", UGX:"UGX ", KES:"KSh ",
-    TZS:"TSh ", RWF:"RWF ", AED:"AED ", CAD:"C$", ZAR:"R",
-  };
-  const NO_DEC = ["UGX","KES","TZS","RWF"];
-  const sym = SYM[currency] ?? currency + " ";
-  return NO_DEC.includes(currency)
-    ? sym + Math.round(amount).toLocaleString("en-US")
-    : sym + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-function fmtDate(d: string | null): string {
-  if (!d) return "—";
-  return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric",
-  });
-}
 
 function buildPdf(receipt: Record<string, unknown>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -102,7 +85,7 @@ function buildPdf(receipt: Record<string, unknown>): Promise<Buffer> {
     doc.font("Helvetica").fontSize(9).fillColor(GRAY)
       .text("Payment Date: ", 0, y + 56, { width: rightX - 40, align: "right", continued: true })
       .font("Helvetica-Bold").fillColor(DARK)
-      .text(fmtDate(receipt.payment_date as string));
+      .text(pdfFmtDate(receipt.payment_date as string));
 
     if (invNum) {
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
@@ -151,7 +134,7 @@ function buildPdf(receipt: Record<string, unknown>): Promise<Buffer> {
     doc.font("Helvetica-Bold").fontSize(8).fillColor(TEAL)
       .text("AMOUNT PAID", ML + 20, y + 12);
     doc.font("Helvetica-Bold").fontSize(30).fillColor(DARK)
-      .text(fmt(receipt.amount_paid as number, receipt.currency as string), ML + 20, y + 26);
+      .text(pdfFmtCurrency(receipt.amount_paid as number, receipt.currency as string), ML + 20, y + 26);
     y += 76;
 
     // ── PAYMENT DETAILS ───────────────────────────────────────────────────────
@@ -171,7 +154,7 @@ function buildPdf(receipt: Record<string, unknown>): Promise<Buffer> {
 
     const detailRows: [string, string][] = [
       ["Payment Method", String(payLabel)],
-      ["Payment Date",   fmtDate(receipt.payment_date as string)],
+      ["Payment Date",   pdfFmtDate(receipt.payment_date as string)],
     ];
     if (receipt.reference_number) detailRows.push(["Reference Number", String(receipt.reference_number)]);
     if (invNum) detailRows.push(["Invoice Reference", String(invNum)]);

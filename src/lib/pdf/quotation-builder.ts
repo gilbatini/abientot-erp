@@ -1,6 +1,7 @@
 import { existsSync } from "fs";
 import { join } from "path";
 import PDFDocument from "pdfkit";
+import { pdfFmtCurrency, pdfFmtDate } from "./format";
 
 const logoPng    = join(process.cwd(), "public", "logo.png");
 const logoSrc    = existsSync(logoPng) ? logoPng : undefined;
@@ -33,24 +34,6 @@ const SVC: Record<string, string> = {
   hotel_ferry: "TRANSFER - HOTEL TO FERRY", ferry_hotel: "TRANSFER - FERRY TO HOTEL", ferry_booking: "FERRY BOOKING",
 };
 
-function fmt(amount: number, currency: string): string {
-  const SYM: Record<string, string> = {
-    USD:"$", EUR:"€", GBP:"£", UGX:"UGX ", KES:"KSh ",
-    TZS:"TSh ", RWF:"RWF ", AED:"AED ", CAD:"C$", ZAR:"R",
-  };
-  const NO_DEC = ["UGX","KES","TZS","RWF"];
-  const sym = SYM[currency] ?? currency + " ";
-  return NO_DEC.includes(currency)
-    ? sym + Math.round(amount).toLocaleString("en-US")
-    : sym + amount.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
-}
-
-function fmtDate(d: string | null): string {
-  if (!d) return "—";
-  return new Date(d + "T00:00:00").toLocaleDateString("en-GB", {
-    day: "numeric", month: "long", year: "numeric",
-  });
-}
 
 export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -75,6 +58,7 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t     = quotation.travellers as any;
     const items = (quotation.quotation_items ?? []) as Record<string, unknown>[];
+    const docCurrency = (items[0]?.currency as string | undefined) ?? (quotation.currency as string);
     const name  = t ? `${t.first_name} ${t.last_name}` : "—";
     const phone = t?.phone_number
       ? [t.phone_code, t.phone_number].filter(Boolean).join(" ")
@@ -160,11 +144,11 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       .text(String(quotation.number), 0, y + 36, { width: rightX, align: "right" });
 
     doc.font("Helvetica").fontSize(9).fillColor(GRAY)
-      .text(`Issued: ${fmtDate(quotation.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
+      .text(`Issued: ${pdfFmtDate(quotation.issue_date as string)}`, 0, y + 56, { width: rightX, align: "right" });
 
     if (quotation.expiry_date) {
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
-        .text(`Expires: ${fmtDate(quotation.expiry_date as string)}`, 0, y + 74, { width: rightX, align: "right" });
+        .text(`Expires: ${pdfFmtDate(quotation.expiry_date as string)}`, 0, y + 74, { width: rightX, align: "right" });
     }
 
     const statusY = quotation.expiry_date ? y + 92 : y + 74;
@@ -252,10 +236,10 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
 
       doc.font("Helvetica").fontSize(9).fillColor(DARK)
         .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
-      doc.text(item.travel_date ? fmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
+      doc.text(item.travel_date ? pdfFmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
       doc.text(String(item.quantity), COL.c4.x, rowY, { width: COL.c4.w, align: "right", lineBreak: false });
-      doc.text(fmt(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
-      doc.text(fmt((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
+      doc.text(pdfFmtCurrency(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
+      doc.text(pdfFmtCurrency((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
 
       doc.moveTo(ML, y + rowH).lineTo(PAGE_W - MR, y + rowH).strokeColor(BORDER_GRAY).lineWidth(0.5).stroke();
 
@@ -283,14 +267,14 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.font("Helvetica").fontSize(9).fillColor(GRAY)
       .text("Subtotal", totX, y, { width: totW * 0.55, lineBreak: false })
       .fillColor(DARK)
-      .text(fmt(quotation.subtotal as number, quotation.currency as string), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+      .text(pdfFmtCurrency(quotation.subtotal as number, docCurrency), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
     y += 16;
 
     if ((quotation.discount as number) > 0) {
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
         .text("Discount", totX, y, { width: totW * 0.55, lineBreak: false })
         .fillColor("#dc2626")
-        .text(`-${fmt(quotation.discount as number, quotation.currency as string)}`, totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+        .text(`-${pdfFmtCurrency(quotation.discount as number, docCurrency)}`, totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
       y += 16;
     }
 
@@ -298,7 +282,7 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
       doc.font("Helvetica").fontSize(9).fillColor(GRAY)
         .text(`Tax / VAT (${quotation.tax_rate}%)`, totX, y, { width: totW * 0.55, lineBreak: false })
         .fillColor(DARK)
-        .text(fmt(taxAmt, quotation.currency as string), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
+        .text(pdfFmtCurrency(taxAmt, docCurrency), totX + totW * 0.55, y, { width: totW * 0.45, align: "right", lineBreak: false });
       y += 16;
     }
 
@@ -309,7 +293,7 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     doc.font(FONT_BOLD).fontSize(11).fillColor(DARK)
       .text("Estimated Total", totX + 6, y + 6, { width: totW * 0.5, lineBreak: false });
     doc.font(FONT_BOLD).fontSize(13).fillColor(TEAL)
-      .text(fmt(quotation.total as number, quotation.currency as string), totX, y + 6, { width: PAGE_W - MR - totX - 6, align: "right", lineBreak: false });
+      .text(pdfFmtCurrency(quotation.total as number, docCurrency), totX, y + 6, { width: PAGE_W - MR - totX - 6, align: "right", lineBreak: false });
     y += 32;
 
     // ── BANKING DETAILS ──────────────────────────────────────────────────────
