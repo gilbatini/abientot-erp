@@ -58,7 +58,6 @@ export type Database = {
       }
       invoice_items: {
         Row: {
-          currency: string
           description: string
           id: string
           invoice_id: string
@@ -70,7 +69,6 @@ export type Database = {
           unit_price: number
         }
         Insert: {
-          currency?: string
           description: string
           id?: string
           invoice_id: string
@@ -82,7 +80,6 @@ export type Database = {
           unit_price?: number
         }
         Update: {
-          currency?: string
           description?: string
           id?: string
           invoice_id?: string
@@ -170,7 +167,6 @@ export type Database = {
       }
       proforma_items: {
         Row: {
-          currency: string
           description: string
           id: string
           proforma_id: string
@@ -182,7 +178,6 @@ export type Database = {
           unit_price: number
         }
         Insert: {
-          currency?: string
           description: string
           id?: string
           proforma_id: string
@@ -194,7 +189,6 @@ export type Database = {
           unit_price?: number
         }
         Update: {
-          currency?: string
           description?: string
           id?: string
           proforma_id?: string
@@ -292,7 +286,6 @@ export type Database = {
       }
       quotation_items: {
         Row: {
-          currency: string
           description: string
           id: string
           quantity: number
@@ -304,7 +297,6 @@ export type Database = {
           unit_price: number
         }
         Insert: {
-          currency?: string
           description: string
           id?: string
           quantity?: number
@@ -316,7 +308,6 @@ export type Database = {
           unit_price?: number
         }
         Update: {
-          currency?: string
           description?: string
           id?: string
           quantity?: number

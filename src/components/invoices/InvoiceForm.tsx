@@ -18,7 +18,7 @@ interface Props {
 const STATUSES = ["draft", "sent", "paid", "cancelled"] as const;
 
 function emptyItem(): ItemDraft {
-  return { description: "", quantity: 1, unit_price: 0, currency: "USD", type: null, traveller_name: null, travel_date: null };
+  return { description: "", quantity: 1, unit_price: 0, type: null, traveller_name: null, travel_date: null };
 }
 
 function calcTotals(items: ItemDraft[], discount: number, taxRate: number) {
@@ -49,7 +49,6 @@ export function InvoiceForm({ travellers, initialData }: Props) {
           description:    it.description,
           quantity:       it.quantity,
           unit_price:     it.unit_price,
-          currency:       it.currency,
           type:           it.type,
           traveller_name: it.traveller_name,
           travel_date:    it.travel_date,

@@ -58,7 +58,7 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const t     = quotation.travellers as any;
     const items = (quotation.quotation_items ?? []) as Record<string, unknown>[];
-    const docCurrency = (items[0]?.currency as string | undefined) ?? (quotation.currency as string);
+    const docCurrency = quotation.currency as string;
     const name  = t ? `${t.first_name} ${t.last_name}` : "—";
     const phone = t?.phone_number
       ? [t.phone_code, t.phone_number].filter(Boolean).join(" ")
@@ -238,8 +238,8 @@ export function buildQuotationPdf(quotation: Record<string, unknown>): Promise<B
         .text(String(item.traveller_name ?? "—"), COL.c2.x, rowY, { width: COL.c2.w, lineBreak: false });
       doc.text(item.travel_date ? pdfFmtDate(item.travel_date as string) : "—", COL.c3.x, rowY, { width: COL.c3.w, lineBreak: false });
       doc.text(String(item.quantity), COL.c4.x, rowY, { width: COL.c4.w, align: "right", lineBreak: false });
-      doc.text(pdfFmtCurrency(item.unit_price as number, item.currency as string), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
-      doc.text(pdfFmtCurrency((item.quantity as number) * (item.unit_price as number), item.currency as string), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
+      doc.text(pdfFmtCurrency(item.unit_price as number, docCurrency), COL.c5.x, rowY, { width: COL.c5.w, align: "right", lineBreak: false });
+      doc.text(pdfFmtCurrency((item.quantity as number) * (item.unit_price as number), docCurrency), COL.c6.x, rowY, { width: COL.c6.w, align: "right", lineBreak: false });
 
       doc.moveTo(ML, y + rowH).lineTo(PAGE_W - MR, y + rowH).strokeColor(BORDER_GRAY).lineWidth(0.5).stroke();
 

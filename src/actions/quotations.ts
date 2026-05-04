@@ -113,7 +113,6 @@ export async function convertQuotationToInvoice(quotationId: string): Promise<st
     description:    item.description,
     quantity:       item.quantity,
     unit_price:     item.unit_price,
-    currency:       item.currency,
     type:           item.type,
     traveller_name: item.traveller_name,
     travel_date:    item.travel_date,

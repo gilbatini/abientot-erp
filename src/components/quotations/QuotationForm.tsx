@@ -18,7 +18,7 @@ interface Props {
 const STATUSES = ["draft", "sent", "approved", "rejected", "expired"] as const;
 
 function emptyItem(): QuotationItemDraft {
-  return { description: "", quantity: 1, unit_price: 0, currency: "USD", type: null, traveller_name: null, travel_date: null };
+  return { description: "", quantity: 1, unit_price: 0, type: null, traveller_name: null, travel_date: null };
 }
 
 function calcTotals(items: QuotationItemDraft[], discount: number, taxRate: number) {
@@ -49,7 +49,6 @@ export function QuotationForm({ travellers, initialData }: Props) {
           description:    it.description,
           quantity:       it.quantity,
           unit_price:     it.unit_price,
-          currency:       it.currency,
           type:           it.type,
           traveller_name: it.traveller_name,
           travel_date:    it.travel_date,
